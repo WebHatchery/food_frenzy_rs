@@ -1,20 +1,4 @@
-//! Feast Frenzy migration to Macroquad.
-
-#![allow(clippy::too_many_arguments)]
-
-mod app;
-mod assets;
-mod audio;
-mod commands;
-mod data;
-mod engine;
-mod gameplay;
-mod lifecycle;
-mod persistence;
-mod player;
-mod simulation;
-mod state;
-mod ui;
+//! Macroquad entry point for Feast Frenzy.
 
 use macroquad::prelude::*;
 use macroquad_toolkit::capture;
@@ -25,5 +9,5 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    app::run().await;
+    feast_frenzy::app::run().await;
 }

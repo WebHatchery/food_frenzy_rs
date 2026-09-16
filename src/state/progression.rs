@@ -403,6 +403,3 @@ fn starting_customer_type_ids(data: &GameData) -> Vec<String> {
 
     ids
 }
-
-#[cfg(test)]
-mod tests;

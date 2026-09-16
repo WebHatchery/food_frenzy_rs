@@ -1,5 +1,8 @@
+//! Deterministic world simulation: cooking, arrivals, guest lifecycle, events,
+//! day transitions, and the Lounge cooldown.
+
 mod events;
-mod guests;
+pub mod guests;
 mod spawning;
 mod traits;
 

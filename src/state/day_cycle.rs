@@ -70,6 +70,3 @@ impl DayCycle {
         self.stats.best_combo = self.stats.best_combo.max(combo);
     }
 }
-
-#[cfg(test)]
-mod tests;

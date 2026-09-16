@@ -1,3 +1,6 @@
+//! Application coordination: load the data and assets, advance the active
+//! screen, and bridge UI intents to the game services.
+
 use crate::assets::{
     load_asset_pack, load_character_textures, load_interior_sheet, load_title_texture,
 };

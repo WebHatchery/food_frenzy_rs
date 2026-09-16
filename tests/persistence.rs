@@ -1,5 +1,7 @@
-use super::*;
-use crate::data::GameData;
+use feast_frenzy::data::GameData;
+use feast_frenzy::persistence::{
+    load_game, migrate, save_game, validate_version, FoodFrenzySave, SAVE_VERSION,
+};
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
@@ -12,10 +14,10 @@ fn can_save_and_load_round_trip() {
     std::env::set_var("feast_FRENZY_TEST_SAVE_PATH", &path);
 
     let data = GameData::load();
-    let game_state = crate::state::GameState::new(&data);
-    let progression_state = crate::state::ProgressionState::from_game_data(&data);
-    let guest_state = crate::state::GuestState::new();
-    let timers = crate::state::Timers::new();
+    let game_state = feast_frenzy::state::GameState::new(&data);
+    let progression_state = feast_frenzy::state::ProgressionState::from_game_data(&data);
+    let guest_state = feast_frenzy::state::GuestState::new();
+    let timers = feast_frenzy::state::Timers::new();
     let selected = None;
 
     let err = save_game(

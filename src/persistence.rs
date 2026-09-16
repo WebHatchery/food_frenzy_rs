@@ -1,4 +1,4 @@
-//! Cross-platform persistence helpers for the game.
+//! Cross-platform persistence helpers and versioned save migration.
 
 use crate::state::{GameState, GuestState, ProgressionState, Timers};
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use std::path::PathBuf;
 ///     day-cycle / regulars / specialization state).
 /// v2: the Phase 1-3 systems landed; new fields fill via serde defaults and
 ///     `PlatedDish` reads the legacy bare-string form.
-const SAVE_VERSION: u32 = 2;
+pub const SAVE_VERSION: u32 = 2;
 const GAME_NAME: &str = "feast_frenzy";
 #[cfg(target_arch = "wasm32")]
 const SAVE_KEY: &str = "feast-frenzy-save.json";
@@ -64,7 +64,7 @@ pub fn load_game() -> Result<Option<FoodFrenzySave>, String> {
 /// Upgrade an older save in place. Most version gaps are absorbed by serde
 /// defaults and `PlatedDish`'s legacy deserializer; anything that needs an
 /// explicit fixup gets a version arm here.
-fn migrate(save: &mut FoodFrenzySave) {
+pub fn migrate(save: &mut FoodFrenzySave) {
     if save.version < 2 {
         // v0/v1 saves predate the day cycle: their run effectively resumes at
         // the start of a fresh service day rather than mid-ledger.
@@ -118,7 +118,7 @@ fn load_snapshot() -> Result<FoodFrenzySave, String> {
     }
 }
 
-fn validate_version(save: &FoodFrenzySave) -> Result<(), String> {
+pub fn validate_version(save: &FoodFrenzySave) -> Result<(), String> {
     if save.version > SAVE_VERSION {
         return Err(format!(
             "Save version {} is newer than supported version {SAVE_VERSION}",
@@ -144,6 +144,3 @@ fn save_exists() -> bool {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

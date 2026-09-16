@@ -34,6 +34,3 @@ pub fn freshness_bill_multiplier(freshness: Freshness, balance: &GameBalance) ->
 pub fn seconds_until_stale(age_ms: f32, balance: &GameBalance) -> f32 {
     ((balance.dish_fresh_window_ms - age_ms) / 1000.0).max(0.0)
 }
-
-#[cfg(test)]
-mod tests;

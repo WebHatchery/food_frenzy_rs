@@ -39,7 +39,6 @@ pub struct ProcessingCinematic {
 }
 
 impl ProcessingCinematic {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         guest_name: String,
         customer_type: String,
@@ -107,6 +106,3 @@ impl ProcessingCinematic {
         matches!(self.phase().0, CinematicPhase::Reveal)
     }
 }
-
-#[cfg(test)]
-mod tests;

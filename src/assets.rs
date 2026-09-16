@@ -1,3 +1,5 @@
+//! Asset-pack loading and texture lookup for the Macroquad renderer.
+
 use crate::data::GameData;
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::{load_texture_from_pack_or_file, AssetPack};

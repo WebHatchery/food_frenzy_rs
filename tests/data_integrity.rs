@@ -3,29 +3,10 @@
 //! limit. Toolkit loading degrades to defaults at runtime; these are the
 //! loud counterpart so broken content fails CI instead of shipping empty.
 
-use super::*;
+use feast_frenzy::data::{GameData, TutorialTrigger, STATION_COLORS};
 
 fn parsed() -> GameData {
-    GameData {
-        customer_types: serde_json::from_str(CUSTOMER_TYPES_JSON)
-            .expect("customer_types.json must parse"),
-        dish_types: serde_json::from_str(DISH_TYPES_JSON).expect("dish_types.json must parse"),
-        upgrades: serde_json::from_str(UPGRADES_JSON).expect("upgrades.json must parse"),
-        recipes: serde_json::from_str(RECIPES_JSON).expect("recipes.json must parse"),
-        achievements: serde_json::from_str(ACHIEVEMENTS_JSON)
-            .expect("achievements.json must parse"),
-        tutorial_steps: serde_json::from_str(TUTORIAL_JSON).expect("tutorial.json must parse"),
-        specializations: serde_json::from_str(SPECIALIZATIONS_JSON)
-            .expect("specializations.json must parse"),
-        trait_behaviors: serde_json::from_str(TRAIT_BEHAVIORS_JSON)
-            .expect("trait_behaviors.json must parse"),
-        regulars: serde_json::from_str(REGULARS_JSON).expect("regulars.json must parse"),
-        dining_events: serde_json::from_str(DINING_EVENTS_JSON)
-            .expect("dining_events.json must parse"),
-        prestige_perks: serde_json::from_str(PRESTIGE_PERKS_JSON)
-            .expect("prestige_perks.json must parse"),
-        balance: serde_json::from_str(GAME_BALANCE_JSON).expect("game_balance.json must parse"),
-    }
+    GameData::load_embedded_strict().expect("embedded game data must parse")
 }
 
 // Keep in sync with the `get_effect` call sites in engine.rs/gameplay.rs;

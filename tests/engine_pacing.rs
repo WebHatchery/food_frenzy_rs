@@ -1,5 +1,8 @@
-use super::*;
-use crate::state::{Course, Satisfaction};
+use feast_frenzy::data::GameBalance;
+use feast_frenzy::engine::{
+    classify_course_pacing, is_kept_waiting, pacing_score_multiplier, CoursePacing,
+};
+use feast_frenzy::state::{Course, Customer, Satisfaction};
 
 fn customer(served: usize, total: usize, eating_ms: f32, waiting_ms: f32) -> Customer {
     let order = (0..total)

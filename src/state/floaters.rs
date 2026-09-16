@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub const FLOATER_LIFETIME_MS: f32 = 1_900.0;
 /// Enough for a busy full room without turning into confetti.
-const MAX_ACTIVE_FLOATERS: usize = 24;
+pub const MAX_ACTIVE_FLOATERS: usize = 24;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FloaterKind {
@@ -70,6 +70,3 @@ impl Floaters {
             .retain(|floater| floater.age_ms < FLOATER_LIFETIME_MS);
     }
 }
-
-#[cfg(test)]
-mod tests;

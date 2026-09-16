@@ -68,7 +68,7 @@ pub(super) fn update_patience(
 /// Guests who have eaten every course of their order finish up, settle their
 /// tab (plus a tip), and leave — freeing the table and banking a satisfied
 /// visit toward the day they are plump enough for the Last Meal Lounge.
-pub(super) fn update_departures(
+pub fn update_departures(
     dt_ms: f32,
     data: &GameData,
     game_state: &mut GameState,
@@ -228,6 +228,3 @@ fn impatient_customer_ids(
         })
         .collect()
 }
-
-#[cfg(test)]
-mod tests;

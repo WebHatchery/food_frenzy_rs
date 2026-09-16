@@ -1,3 +1,6 @@
+//! Player-facing actions: cooking, serving, clientele growth, crafting, and
+//! prestige. UI code calls these explicit mutations through commands.
+
 use crate::data::{EventEffect, GameData, PerkEffect, TutorialTrigger};
 use crate::engine::{
     can_process_customer, classify_course_pacing, classify_dish_age, cooking_time_ms,

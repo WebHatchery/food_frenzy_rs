@@ -1,4 +1,6 @@
-use super::*;
+use feast_frenzy::state::{
+    FloaterAnchor, FloaterKind, Floaters, FLOATER_LIFETIME_MS, MAX_ACTIVE_FLOATERS,
+};
 
 #[test]
 fn floaters_expire_after_lifetime() {

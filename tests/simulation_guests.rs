@@ -1,5 +1,10 @@
-use super::*;
-use crate::state::{Course, Customer, Satisfaction};
+use feast_frenzy::data::GameData;
+use feast_frenzy::engine::{can_process_customer, visits_until_ready_for};
+use feast_frenzy::gameplay::serve_customer;
+use feast_frenzy::simulation::guests::update_departures;
+use feast_frenzy::state::{
+    Course, Customer, GameState, GuestState, ProgressionState, Satisfaction,
+};
 
 fn seated_customer(id: u32, bill: i64, order: Vec<Course>, times_fed: u32) -> Customer {
     Customer {
@@ -68,7 +73,7 @@ fn guest_pays_bill_and_tip_once_order_is_complete() {
     );
 
     assert!(game_state.customers.is_empty(), "guest should have left");
-    let tip = crate::engine::satisfied_tip(&data, 20);
+    let tip = feast_frenzy::engine::satisfied_tip(&data, 20);
     assert_eq!(progression.currency, 20 + tip);
 }
 
@@ -121,9 +126,9 @@ fn rushing_the_second_course_pays_less_than_pacing_it() {
             .station_mut("blue")
             .unwrap()
             .dishes
-            .push(crate::state::PlatedDish::new("Toast".to_string()));
+            .push(feast_frenzy::state::PlatedDish::new("Toast".to_string()));
     }
-    assert!(crate::gameplay::serve_customer(
+    assert!(serve_customer(
         "blue",
         1,
         &data,
@@ -133,7 +138,7 @@ fn rushing_the_second_course_pays_less_than_pacing_it() {
     ));
     let after_first = rushed.score;
     assert!(rushed.customers[0].eating_ms > 0.0, "eating window armed");
-    assert!(crate::gameplay::serve_customer(
+    assert!(serve_customer(
         "blue",
         1,
         &data,
@@ -156,9 +161,9 @@ fn rushing_the_second_course_pays_less_than_pacing_it() {
             .station_mut("blue")
             .unwrap()
             .dishes
-            .push(crate::state::PlatedDish::new("Toast".to_string()));
+            .push(feast_frenzy::state::PlatedDish::new("Toast".to_string()));
     }
-    assert!(crate::gameplay::serve_customer(
+    assert!(serve_customer(
         "blue",
         1,
         &data,
@@ -169,7 +174,7 @@ fn rushing_the_second_course_pays_less_than_pacing_it() {
     let after_first = paced.score;
     paced.customers[0].eating_ms = 0.0;
     paced.customers[0].waiting_ms = 1_000.0;
-    assert!(crate::gameplay::serve_customer(
+    assert!(serve_customer(
         "blue",
         1,
         &data,
@@ -189,21 +194,21 @@ fn rushing_the_second_course_pays_less_than_pacing_it() {
 fn readiness_is_reached_after_enough_fed_visits() {
     let data = GameData::load();
     // The helper builds tier-1 pigs, so the tier ladder's first entry applies.
-    let needed = crate::engine::visits_until_ready_for(&data, "pig");
+    let needed = visits_until_ready_for(&data, "pig");
     let below = seated_customer(1, 0, vec![course("blue", false)], needed - 1);
     let ready = seated_customer(2, 0, vec![course("blue", false)], needed);
-    assert!(!crate::engine::can_process_customer(&below, &data));
-    assert!(crate::engine::can_process_customer(&ready, &data));
+    assert!(!can_process_customer(&below, &data));
+    assert!(can_process_customer(&ready, &data));
 }
 
 #[test]
 fn tier_one_guests_are_ready_sooner_than_the_flat_fallback() {
     let data = GameData::load();
-    let tier_one = crate::engine::visits_until_ready_for(&data, "pig");
+    let tier_one = visits_until_ready_for(&data, "pig");
     assert!(
         tier_one < data.balance.visits_until_ready,
         "early pacing retune: tier 1 must be faster than the old flat gate"
     );
-    let unknown = crate::engine::visits_until_ready_for(&data, "not-a-type");
+    let unknown = visits_until_ready_for(&data, "not-a-type");
     assert_eq!(unknown, tier_one, "unknown types fall back to tier 1");
 }

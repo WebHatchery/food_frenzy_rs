@@ -1,3 +1,6 @@
+//! Input translation: convert released UI controls and keyboard shortcuts into
+//! explicit gameplay commands, then dispatch those commands.
+
 use crate::data::{GameData, STATION_COLORS};
 use crate::gameplay::{
     attract_customer_type, craft_recipe, invite_customer_to_vip, serve_customer, try_prestige,

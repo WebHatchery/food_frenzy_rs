@@ -50,6 +50,3 @@ pub fn is_kept_waiting(customer: &Customer, balance: &GameBalance) -> bool {
         && customer.eating_ms <= 0.0
         && customer.waiting_ms > balance.course_wait_grace_ms.max(0.0)
 }
-
-#[cfg(test)]
-mod tests;

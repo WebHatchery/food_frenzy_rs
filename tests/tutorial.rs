@@ -1,4 +1,5 @@
-use super::*;
+use feast_frenzy::data::{TutorialStep, TutorialTrigger};
+use feast_frenzy::state::TutorialProgress;
 
 fn steps() -> Vec<TutorialStep> {
     vec![

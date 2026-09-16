@@ -1,3 +1,6 @@
+//! Start and restore active runs, including compatibility repair for older
+//! saves and newly added content.
+
 use crate::data::GameData;
 use crate::engine::{kitchen_pass_position, max_customer_count, restaurant_table_position};
 use crate::persistence::{load_game, FoodFrenzySave};

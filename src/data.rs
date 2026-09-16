@@ -1,4 +1,8 @@
-use macroquad_toolkit::data_loader::{load_json_file_with_fallback_sync, JsonFallbackPolicy};
+//! Typed game content and balance data loaded from the embedded asset catalog.
+
+use macroquad_toolkit::data_loader::{
+    load_json_file_with_fallback_sync, parse_json_labeled, JsonFallbackPolicy,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -520,6 +524,41 @@ impl Default for RegularsData {
 }
 
 impl GameData {
+    /// Parse the shipped catalog without consulting runtime override files.
+    /// Integration tests use this strict path so a broken embedded asset can
+    /// never be hidden by the normal runtime fallback policy.
+    pub fn load_embedded_strict() -> Result<Self, String> {
+        Ok(Self {
+            customer_types: parse_json_labeled(
+                "assets/data/customer_types.json",
+                CUSTOMER_TYPES_JSON,
+            )?,
+            dish_types: parse_json_labeled("assets/data/dish_types.json", DISH_TYPES_JSON)?,
+            upgrades: parse_json_labeled("assets/data/upgrades.json", UPGRADES_JSON)?,
+            recipes: parse_json_labeled("assets/data/recipes.json", RECIPES_JSON)?,
+            achievements: parse_json_labeled("assets/data/achievements.json", ACHIEVEMENTS_JSON)?,
+            tutorial_steps: parse_json_labeled("assets/data/tutorial.json", TUTORIAL_JSON)?,
+            specializations: parse_json_labeled(
+                "assets/data/specializations.json",
+                SPECIALIZATIONS_JSON,
+            )?,
+            trait_behaviors: parse_json_labeled(
+                "assets/data/trait_behaviors.json",
+                TRAIT_BEHAVIORS_JSON,
+            )?,
+            regulars: parse_json_labeled("assets/data/regulars.json", REGULARS_JSON)?,
+            dining_events: parse_json_labeled(
+                "assets/data/dining_events.json",
+                DINING_EVENTS_JSON,
+            )?,
+            prestige_perks: parse_json_labeled(
+                "assets/data/prestige_perks.json",
+                PRESTIGE_PERKS_JSON,
+            )?,
+            balance: parse_json_labeled("assets/data/game_balance.json", GAME_BALANCE_JSON)?,
+        })
+    }
+
     pub fn load() -> Self {
         Self {
             customer_types: load_json_file_with_fallback_sync(
@@ -630,7 +669,3 @@ impl GameData {
         self.prestige_perks.iter().find(|item| item.id == id)
     }
 }
-
-// Shipped content tests keep lenient runtime fallbacks from hiding broken assets.
-#[cfg(test)]
-mod tests;

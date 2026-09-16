@@ -1,5 +1,6 @@
-// The shared file-size gate from CODE_STANDARDS §2.2 — the 800-line hard
-// limit on non-test lines — enforced under plain `cargo test`.
+// The shared file-size gate from CODE_STANDARDS §2.2 — every physical Rust
+// source line, including tests, whitespace, comments, and attributes — is
+// enforced under plain `cargo test`.
 
 #[test]
 fn source_files_stay_under_the_limit() {

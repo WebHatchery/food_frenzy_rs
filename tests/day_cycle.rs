@@ -1,4 +1,4 @@
-use super::*;
+use feast_frenzy::state::DayCycle;
 
 #[test]
 fn day_ends_once_and_waits_for_the_summary() {

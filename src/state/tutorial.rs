@@ -42,6 +42,3 @@ impl TutorialProgress {
         self.complete = true;
     }
 }
-
-#[cfg(test)]
-mod tests;

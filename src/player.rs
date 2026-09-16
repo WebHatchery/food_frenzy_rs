@@ -1,3 +1,5 @@
+//! Chef movement and proximity interactions for stations and seated guests.
+
 use crate::data::{GameData, STATION_COLORS};
 use crate::engine::{
     kitchen_pass_position, kitchen_station_position, KITCHEN_SERVICE_LEFT, PLAYER_WALK_SPEED,

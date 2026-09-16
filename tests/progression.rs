@@ -1,4 +1,5 @@
-use super::*;
+use feast_frenzy::data::GameData;
+use feast_frenzy::state::ProgressionState;
 
 #[test]
 fn progression_starts_with_basic_clientele_only() {

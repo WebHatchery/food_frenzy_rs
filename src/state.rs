@@ -1,3 +1,5 @@
+//! Serializable run state and persistent progression owned by the game layer.
+
 use crate::data::{Achievement, CustomerSpecialTraits, GameData, Recipe, TutorialTrigger, Upgrade};
 use macroquad_toolkit::timing::IntervalTimer;
 use serde::{Deserialize, Serialize};
@@ -9,9 +11,13 @@ mod floaters;
 mod progression;
 mod tutorial;
 
-pub use cinematic::{CinematicPhase, ProcessingCinematic, REVEAL_MS};
+pub use cinematic::{
+    CinematicPhase, ProcessingCinematic, CURTAIN_MS, ESCORT_MS, QUIET_MS, REVEAL_MS,
+};
 pub use day_cycle::{DayCycle, DayStats};
-pub use floaters::{FloaterAnchor, FloaterKind, Floaters};
+pub use floaters::{
+    FloaterAnchor, FloaterKind, Floaters, FLOATER_LIFETIME_MS, MAX_ACTIVE_FLOATERS,
+};
 pub use tutorial::TutorialProgress;
 
 pub const INFINITE_INGREDIENTS: i64 = -1;

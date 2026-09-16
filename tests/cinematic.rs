@@ -1,4 +1,6 @@
-use super::*;
+use feast_frenzy::state::{
+    CinematicPhase, ProcessingCinematic, CURTAIN_MS, ESCORT_MS, QUIET_MS, REVEAL_MS,
+};
 
 fn cinematic() -> ProcessingCinematic {
     ProcessingCinematic::new(
