@@ -7,7 +7,7 @@ pub use pacing::{classify_course_pacing, is_kept_waiting, pacing_score_multiplie
 
 pub use freshness::{classify_dish_age, freshness_bill_multiplier, seconds_until_stale, Freshness};
 
-use crate::data::{CustomerSpecialTraits, DishType, GameBalance, GameData};
+use crate::data::{CustomerSpecialTraits, DishType, GameBalance, GameData, GoalDef, GoalKind};
 use crate::state::{Course, Customer, ProgressionState, Satisfaction};
 
 pub const RESTAURANT_FLOOR_WIDTH: f32 = 1_000.0;
@@ -18,6 +18,43 @@ pub fn max_customer_count(data: &GameData, progression: &ProgressionState) -> us
     let bonus = progression.get_effect("max_customers_bonus", 0.0);
     let total = (f64::from(data.balance.max_customers) + bonus).max(1.0);
     total as usize
+}
+
+/// Choose the next ledger objective from the content catalog. The index is
+/// derived from run state rather than wall-clock randomness, so a save/load
+/// cycle cannot silently change the promise shown to the player.
+pub fn select_next_day_goal(data: &GameData, day: u32, progression: &ProgressionState) -> GoalDef {
+    let mut candidates: Vec<&GoalDef> = data
+        .goals
+        .iter()
+        .filter(|goal| goal.min_day <= day.max(1))
+        .filter(|goal| match &goal.kind {
+            GoalKind::AttractClientele => data
+                .customer_types
+                .iter()
+                .any(|customer| !progression.is_customer_unlocked(&customer.id)),
+            _ => true,
+        })
+        .collect();
+    if candidates.is_empty() {
+        candidates = data.goals.iter().collect();
+    }
+    let index = (day as usize
+        + progression.days_completed.max(0) as usize
+        + progression.events_completed.max(0) as usize)
+        % candidates.len().max(1);
+    candidates
+        .get(index)
+        .or_else(|| candidates.first())
+        .cloned()
+        .cloned()
+        .unwrap_or_else(|| GoalDef {
+            id: "steady-service".to_string(),
+            title: "A steady hand".to_string(),
+            description: "Serve a good shift for the house.".to_string(),
+            min_day: 1,
+            kind: GoalKind::ServeCourses { target: 1 },
+        })
 }
 
 pub fn spawn_interval_ms(data: &GameData, progression: &ProgressionState) -> f32 {
@@ -173,20 +210,20 @@ pub fn roll_order(data: &GameData, customer_type_id: &str) -> Vec<Course> {
         .enumerate()
         .map(|(index, color)| Course {
             color,
-            label: course_label(index, total).to_string(),
+            label: course_label(data, index, total).to_string(),
             served: false,
         })
         .collect()
 }
 
-fn course_label(index: usize, total: usize) -> &'static str {
+fn course_label(data: &GameData, index: usize, total: usize) -> String {
     match (index, total) {
-        (_, 1) => "Main",
-        (0, 2) => "Entrée",
-        (_, 2) => "Dessert",
-        (0, _) => "Entrée",
-        (1, _) => "Main",
-        _ => "Dessert",
+        (_, 1) => data.text("course_main").to_string(),
+        (0, 2) => data.text("course_appetizer").to_string(),
+        (_, 2) => data.text("course_dessert").to_string(),
+        (0, _) => data.text("course_appetizer").to_string(),
+        (1, _) => data.text("course_main").to_string(),
+        _ => data.text("course_dessert").to_string(),
     }
 }
 

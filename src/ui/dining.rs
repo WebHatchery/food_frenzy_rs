@@ -121,7 +121,7 @@ fn draw_table(
         });
     if can_serve {
         let serve_rect = Rect::new(rect.x + rect.w - 62.0, rect.y + 12.0, 50.0, 24.0);
-        draw_button(serve_rect, "Serve", true, false);
+        draw_button(serve_rect, data.text("ui_serve"), true, false);
         draw_circle_lines(center.x, center.y, table_radius + 5.0, 2.0, SKYBLUE);
         ui.serve_customer.insert(customer.id, serve_rect);
     }
@@ -160,7 +160,7 @@ pub(super) fn draw_dining_room(
         room::draw_floor_pattern(floor);
     }
     super::ambience::draw_tier_tone(floor, progression, data);
-    room::draw_room_fixtures(floor);
+    room::draw_room_fixtures(floor, data);
     if let Some(sheet) = interior_sheet {
         room::draw_room_decor(floor, sheet);
     }
@@ -173,7 +173,10 @@ pub(super) fn draw_dining_room(
             .map(|station| station.dishes.len())
             .unwrap_or_default();
         if ready > 0 {
-            format!("{} ready - click Serve", dish_label(data, color))
+            data.text_format(
+                "message_serve_prompt",
+                [("dish", dish_label(data, color))].as_slice(),
+            )
         } else {
             dish_label(data, color)
         }
@@ -193,9 +196,13 @@ pub(super) fn draw_dining_room(
     );
     draw_rectangle_lines(plaque.x, plaque.y, plaque.w, plaque.h, 1.0, LINE);
     draw_ui_text(
-        &format!(
-            "Serving: {}",
-            selected_text.unwrap_or_else(|| "cook, carry, then serve".to_string())
+        &data.text_format(
+            "ui_serving",
+            [(
+                "selection",
+                selected_text.unwrap_or_else(|| data.text("message_cook_carry_serve").to_string()),
+            )]
+            .as_slice(),
         ),
         plaque.x + 12.0,
         plaque.y + 23.0,
@@ -214,7 +221,7 @@ pub(super) fn draw_dining_room(
     );
     draw_rectangle_lines(entrance.x - 44.0, entrance.y - 28.0, 88.0, 56.0, 1.5, GOLD);
     draw_ui_text(
-        "Front Door",
+        data.text("ui_front_door"),
         entrance.x - 34.0,
         entrance.y + 6.0,
         15.0,
@@ -246,6 +253,7 @@ pub(super) fn draw_dining_room(
         draw_player_actor(
             floor_to_screen(floor, game.player.x, game.player.y),
             &game.player,
+            data,
             interior_sheet,
         );
     }
@@ -271,7 +279,7 @@ pub(super) fn draw_dining_room(
     }
 
     if game.customers.is_empty() {
-        let text = "Waiting for guests";
+        let text = data.text("message_waiting_guests");
         let dim = measure_ui_text(text, None, 18, 1.0);
         draw_ui_text(
             text,
@@ -300,7 +308,10 @@ fn draw_day_clock(floor: Rect, game: &GameState, data: &GameData) {
     );
     draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 1.0, LINE);
     draw_ui_text(
-        &format!("Day {}", game.day_cycle.day),
+        &data.text_format(
+            "ui_day",
+            [("day", game.day_cycle.day.to_string())].as_slice(),
+        ),
         rect.x + 10.0,
         rect.y + 17.0,
         14.0,
@@ -331,11 +342,17 @@ fn draw_event_banner(floor: Rect, game: &GameState, data: &GameData) {
     let Some(event) = data.dining_event_by_id(&active.event_id) else {
         return;
     };
-    let text = format!(
-        "{}  ({:.0}s)  -  {}",
-        event.name,
-        (active.remaining_ms / 1000.0).max(0.0),
-        event.description
+    let text = data.text_format(
+        "ui_event_banner",
+        [
+            ("name", event.name.clone()),
+            (
+                "seconds",
+                format!("{:.0}", (active.remaining_ms / 1000.0).max(0.0)),
+            ),
+            ("description", event.description.clone()),
+        ]
+        .as_slice(),
     );
     let dim = measure_ui_text(&text, None, 14, 1.0);
     let rect = Rect::new(floor.x + 12.0, floor.y + 58.0, dim.width + 24.0, 26.0);
@@ -375,7 +392,7 @@ fn draw_combo_meter(
         return;
     }
     let boost = progression.get_effect("combo_multiplier", 1.0);
-    let multiplier = 1.0 + f64::from(game.combo) * 0.1 * boost;
+    let multiplier = 1.0 + f64::from(game.combo) * data.balance.combo_score_step * boost;
     let rect = Rect::new(floor.x + floor.w - 178.0, floor.y + 12.0, 164.0, 44.0);
     draw_rectangle(
         rect.x,
@@ -386,7 +403,14 @@ fn draw_combo_meter(
     );
     draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 1.5, GOLD);
     draw_ui_text(
-        &format!("Combo x{}  ({:.1}x renown)", game.combo, multiplier),
+        &data.text_format(
+            "ui_combo",
+            [
+                ("combo", game.combo.to_string()),
+                ("multiplier", format!("{:.1}", multiplier)),
+            ]
+            .as_slice(),
+        ),
         rect.x + 10.0,
         rect.y + 18.0,
         14.0,

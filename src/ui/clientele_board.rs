@@ -58,14 +58,14 @@ pub(super) fn draw_clientele_board(
     );
     draw_rectangle_lines(board.x, board.y, board.w, board.h, 2.0, GOLD);
     draw_ui_text(
-        "CLIENTELE LADDER",
+        data.text("ui_clientele_ladder"),
         board.x + 18.0,
         board.y + 32.0,
         22.0,
         GOLD,
     );
     draw_ui_text(
-        "Every guest the house can attract. Meat from each tier unlocks the next.",
+        data.text("ui_clientele_description"),
         board.x + 18.0,
         board.y + 54.0,
         14.0,
@@ -73,7 +73,7 @@ pub(super) fn draw_clientele_board(
     );
 
     let close = Rect::new(board.x + board.w - 76.0, board.y + 14.0, 60.0, 26.0);
-    draw_button(close, "Close", true, false);
+    draw_button(close, data.text("ui_close"), true, false);
     ui.clientele_board_toggle = Some(close);
     ui.modal_open = true;
     // The board owns the attract buttons while it is open.
@@ -86,7 +86,10 @@ pub(super) fn draw_clientele_board(
         if customer_type.profile_tier != last_tier {
             last_tier = customer_type.profile_tier;
             draw_ui_text(
-                &format!("TIER {}", last_tier.max(1)),
+                &data.text_format(
+                    "ui_tier",
+                    [("tier", last_tier.max(1).to_string())].as_slice(),
+                ),
                 board.x + 18.0,
                 y + 12.0,
                 13.0,
@@ -146,7 +149,10 @@ fn draw_clientele_row(
     let name = if unlocked {
         customer_type.name.clone()
     } else {
-        format!("{} (locked)", customer_type.name.replace(" Girl", ""))
+        data.text_format(
+            "ui_locked",
+            [("name", customer_type.name.replace(" Girl", ""))].as_slice(),
+        )
     };
     draw_ui_text(
         &name,
@@ -159,7 +165,7 @@ fn draw_clientele_row(
     let identity = trait_identity_line(customer_type, data);
     draw_ui_text(&identity, row.x + 48.0, row.y + 33.0, 12.0, MUTED);
 
-    let yield_text = format!("yields {}-meat", customer_type.id);
+    let yield_text = data.text_format("ui_yields", [("meat", customer_type.id.clone())].as_slice());
     let yield_dim = measure_ui_text(&yield_text, None, 12, 1.0);
     draw_ui_text(
         &yield_text,
@@ -171,7 +177,7 @@ fn draw_clientele_row(
 
     if unlocked {
         draw_ui_text(
-            "on the floor",
+            data.text("ui_on_floor"),
             row.x + row.w - 92.0,
             row.y + row.h * 0.5 + 5.0,
             13.0,
@@ -189,7 +195,7 @@ fn draw_clientele_row(
         );
         let can_attract = can_afford_cost(game, &customer_type.unlock_cost);
         let button = Rect::new(row.x + row.w - 92.0, row.y + row.h * 0.5 - 13.0, 80.0, 26.0);
-        draw_button(button, "Attract", can_attract, !can_attract);
+        draw_button(button, data.text("ui_attract"), can_attract, !can_attract);
         if can_attract {
             ui.attract_buttons.insert(customer_type.id.clone(), button);
         }
@@ -198,7 +204,7 @@ fn draw_clientele_row(
 
 fn trait_identity_line(customer_type: &CustomerType, data: &GameData) -> String {
     let Some(traits) = &customer_type.special_traits else {
-        return "easygoing".to_string();
+        return data.text("ui_easygoing").to_string();
     };
     let flags = [
         ("low_appetite", traits.low_appetite),
@@ -219,7 +225,7 @@ fn trait_identity_line(customer_type: &CustomerType, data: &GameData) -> String 
         })
         .collect();
     if names.is_empty() {
-        "easygoing".to_string()
+        data.text("ui_easygoing").to_string()
     } else {
         names.join(" · ")
     }

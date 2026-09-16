@@ -33,7 +33,7 @@ pub(super) fn draw_kitchen(
     ui: &mut UiActions,
 ) {
     draw_panel(panel);
-    draw_centered_section_title("Kitchen", panel);
+    draw_centered_section_title(data.text("ui_kitchen"), panel);
 
     let compact = panel.h < 500.0 || panel.w < 240.0;
     let hero_h = if compact {
@@ -55,7 +55,7 @@ pub(super) fn draw_kitchen(
         .filter(|station| station.is_cooking)
         .count();
     draw_row_value(
-        "Station Load",
+        data.text("ui_station_load"),
         &format!("{cooking} cooking / {ready} ready"),
         Rect::new(hero.x + 12.0, hero.y + hero.h + 10.0, hero.w - 24.0, 22.0),
         SUCCESS,
@@ -63,7 +63,10 @@ pub(super) fn draw_kitchen(
 
     let title_y = hero.y + hero.h + 46.0;
     draw_centered_section_title(
-        &format!("Recipes   {}/4 Ready", ready.min(4)),
+        &data.text_format(
+            "ui_ready_count",
+            [("ready", ready.min(4).to_string())].as_slice(),
+        ),
         Rect::new(panel.x, title_y - 28.0, panel.w, 36.0),
     );
 
@@ -92,7 +95,7 @@ pub(super) fn draw_kitchen(
         panel.w - 36.0,
         clear_h,
     );
-    draw_button(clear_rect, "Clear Carried Dish", false, false);
+    draw_button(clear_rect, data.text("ui_clear_carried"), false, false);
     ui.clear_selection = Some(clear_rect);
 }
 
@@ -165,6 +168,7 @@ fn draw_kitchen_hero(rect: Rect, game: &GameState, data: &GameData, sheet: Optio
             kitchen_to_screen(rect, game.player.x, game.player.y),
             &game.player,
             0.60,
+            data,
             sheet,
         );
     }
@@ -238,18 +242,25 @@ fn draw_recipe_station(
     let (status, status_color) = if let Some(oldest) = station.dishes.first() {
         match crate::engine::classify_dish_age(oldest.age_ms, &data.balance) {
             crate::engine::Freshness::Fresh => (
-                format!(
-                    "Fresh ({:.0}s)",
-                    crate::engine::seconds_until_stale(oldest.age_ms, &data.balance)
+                data.text_format(
+                    "ui_fresh",
+                    [(
+                        "seconds",
+                        format!(
+                            "{:.0}",
+                            crate::engine::seconds_until_stale(oldest.age_ms, &data.balance)
+                        ),
+                    )]
+                    .as_slice(),
                 ),
                 SUCCESS,
             ),
-            _ => ("Going stale - serve it!".to_string(), ORANGE),
+            _ => (data.text("ui_going_stale").to_string(), ORANGE),
         }
     } else if station.is_cooking {
-        ("Cooking".to_string(), MUTED)
+        (data.text("ui_cooking").to_string(), MUTED)
     } else {
-        ("Ready to cook".to_string(), MUTED)
+        (data.text("ui_ready_to_cook").to_string(), MUTED)
     };
     draw_ui_text(&status, text_x, row.y + row.h * 0.63, 14.0, status_color);
     draw_station_dots(
@@ -283,13 +294,13 @@ fn draw_recipe_station(
     let can_cook = station.can_cook(data.balance.cooking_slots_limit);
     let button = Rect::new(row.x + row.w - 78.0, row.y + row.h * 0.5 - 14.0, 64.0, 28.0);
     if ready > 0 {
-        draw_button(button, "Carry", true, false);
+        draw_button(button, data.text("ui_carry"), true, false);
         ui.station_select.push((color.to_string(), row));
     } else if can_cook {
-        draw_button(button, "Cook", false, false);
+        draw_button(button, data.text("ui_cook"), false, false);
         ui.station_cook.push((color.to_string(), row));
     } else {
-        draw_button(button, "Busy", false, true);
+        draw_button(button, data.text("ui_busy"), false, true);
     }
 }
 

@@ -76,7 +76,7 @@ pub(super) fn draw_tutorial_panel(
     }
 
     let skip_rect = Rect::new(panel.x + panel.w - 52.0, panel.y + 8.0, 44.0, 22.0);
-    draw_button(skip_rect, "Skip", false, false);
+    draw_button(skip_rect, data.text("ui_skip"), false, false);
     ui.tutorial_skip = Some(skip_rect);
 
     if needs_ack {
@@ -86,7 +86,7 @@ pub(super) fn draw_tutorial_panel(
             80.0,
             28.0,
         );
-        draw_button(next_rect, "Got it", true, false);
+        draw_button(next_rect, data.text("ui_got_it"), true, false);
         ui.tutorial_next = Some(next_rect);
     }
 }

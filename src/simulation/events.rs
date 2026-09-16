@@ -17,10 +17,12 @@ pub(super) fn update_events(
             let name = data
                 .dining_event_by_id(&active.event_id)
                 .map(|event| event.name.clone())
-                .unwrap_or_else(|| "The event".to_string());
+                .unwrap_or_else(|| data.text("message_event_unknown").to_string());
             game_state.active_event = None;
             progression.record_event_completed();
-            game_state.add_message(format!("{name} has passed. Service returns to normal."));
+            game_state.add_message(
+                data.text_format("message_event_passed", [("event", name)].as_slice()),
+            );
         }
         return;
     }

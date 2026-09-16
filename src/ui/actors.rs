@@ -17,7 +17,7 @@ fn customer_label(customer: &Customer, data: &GameData) -> String {
     let customer_type = data
         .customer_type_by_id(&customer.customer_type)
         .map(|item| item.name.replace(" Girl", ""))
-        .unwrap_or_else(|| "Guest".to_string());
+        .unwrap_or_else(|| data.text("ui_guest_type_unknown").to_string());
     format!("{} / {}", customer.display_name, customer_type)
 }
 
@@ -75,20 +75,26 @@ fn draw_order_courses(customer: &Customer, data: &GameData, pos: Vec2) {
 fn course_chip_text(course: &Course, data: &GameData) -> String {
     let dish = ellipsize(&dish_label(data, &course.color), 14);
     if course.served {
-        format!("{} {dish}", "OK")
+        format!("{} {dish}", data.text("ui_served"))
     } else {
         format!("{}: {dish}", course.label)
     }
 }
 
-pub(super) fn draw_player_actor(pos: Vec2, player: &PlayerActor, sheet: Option<&Texture2D>) {
-    draw_player_actor_scaled(pos, player, 1.0, sheet);
+pub(super) fn draw_player_actor(
+    pos: Vec2,
+    player: &PlayerActor,
+    data: &GameData,
+    sheet: Option<&Texture2D>,
+) {
+    draw_player_actor_scaled(pos, player, 1.0, data, sheet);
 }
 
 pub(super) fn draw_player_actor_scaled(
     pos: Vec2,
     player: &PlayerActor,
     scale: f32,
+    data: &GameData,
     sheet: Option<&Texture2D>,
 ) {
     let shadow = 24.0 * scale;
@@ -175,7 +181,7 @@ pub(super) fn draw_player_actor_scaled(
     }
 
     if scale >= 0.85 {
-        let label = "You";
+        let label = data.text("ui_you");
         let font_size = (13.0 * scale).round() as u16;
         let text_dim = measure_ui_text(label, None, font_size, 1.0);
         draw_rectangle(
@@ -195,7 +201,7 @@ pub(super) fn draw_player_actor_scaled(
     }
 
     if player.action_lock_ms > 0.0 {
-        draw_tooltip("Cooking...", pos.x, pos.y - 106.0 * scale);
+        draw_tooltip(data.text("ui_chef_finishing"), pos.x, pos.y - 106.0 * scale);
         draw_bar(
             pos.x - 26.0 * scale,
             pos.y - 13.0 * scale,
@@ -277,7 +283,7 @@ pub(super) fn draw_customer_sprite(
         let badge = vec2(pos.x - label_w * 0.5 - 8.0, pos.y - 103.0);
         draw_circle(badge.x, badge.y, 7.0, Color::new(0.84, 0.60, 0.31, 1.0));
         draw_ui_text(
-            "R",
+            data.text("ui_regular_badge"),
             badge.x - 4.0,
             badge.y + 5.0,
             12.0,
@@ -298,7 +304,7 @@ pub(super) fn draw_customer_sprite(
         draw_ui_text(&tab, pos.x + 60.0, pos.y - 65.0, 14.0, GOLD);
     }
     if customer.depart_timer_ms > 0.0 {
-        draw_tooltip("Paying up...", pos.x, pos.y - 128.0);
+        draw_tooltip(data.text("ui_paying"), pos.x, pos.y - 128.0);
     }
     if customer.is_seated {
         draw_order_courses(customer, data, pos);
@@ -314,15 +320,15 @@ pub(super) fn draw_customer_sprite(
             2.0,
             SKYBLUE,
         );
-        if player_near_customer(game, customer, 118.0) {
-            draw_tooltip("Space / E: Serve", pos.x, pos.y - 145.0);
+        if player_near_customer(game, customer, data.balance.player_interaction_range) {
+            draw_tooltip(data.text("ui_click_serve"), pos.x, pos.y - 145.0);
         }
         ui.serve_customer.entry(customer.id).or_insert(sprite_rect);
     }
 
     if customer.is_seated && crate::engine::can_process_customer(customer, data) {
         let invite_rect = Rect::new(pos.x - 36.0, pos.y + 22.0, 72.0, 28.0);
-        draw_button(invite_rect, "VIP", true, false);
+        draw_button(invite_rect, data.text("ui_vip"), true, false);
         ui.invite_customer.insert(customer.id, invite_rect);
     }
 }

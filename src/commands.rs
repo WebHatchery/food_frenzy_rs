@@ -135,14 +135,23 @@ pub fn apply_ui_command(
                 .map(|upgrade| upgrade.cost)
                 .unwrap_or(0);
             if progression_state.buy_upgrade(&upgrade_id) {
-                game_state.add_message(format!("Upgrade purchased: {upgrade_id}"));
+                game_state.add_message(data.text_format(
+                    "message_upgrade_bought",
+                    [("upgrade", upgrade_id.clone())].as_slice(),
+                ));
                 game_state.floaters.spawn(
-                    format!("-${cost} upgrade"),
+                    data.text_format(
+                        "message_upgrade_floater",
+                        [("cost", cost.to_string())].as_slice(),
+                    ),
                     crate::state::FloaterKind::Cash,
                     crate::state::FloaterAnchor::Header,
                 );
             } else {
-                game_state.add_message(format!("Cannot purchase {upgrade_id} now."));
+                game_state.add_message(data.text_format(
+                    "message_upgrade_unavailable",
+                    [("upgrade", upgrade_id)].as_slice(),
+                ));
             }
         }
         UiCommand::CraftRecipe(recipe_id) => {
@@ -156,14 +165,14 @@ pub fn apply_ui_command(
         }
         UiCommand::ClearSelection => {
             *selected_station = None;
-            clear_player_carry(game_state);
+            clear_player_carry(data, game_state);
         }
         UiCommand::TutorialNext => {
             game_state.tutorial.advance(&data.tutorial_steps);
         }
         UiCommand::TutorialSkip => {
             game_state.tutorial.skip();
-            game_state.add_message("Tutorial skipped. The kitchen is yours.".to_string());
+            game_state.add_message(data.text("message_tutorial_skipped"));
         }
         UiCommand::ChooseSpecialization(specialization_id) => {
             let Some(def) = data.specialization_by_id(&specialization_id) else {
@@ -172,7 +181,10 @@ pub fn apply_ui_command(
             if progression_state.choose_specialization(def) {
                 game_state.add_message(format!("The house is now {}. {}", def.name, def.flavor));
                 game_state.floaters.spawn(
-                    format!("House style: {}", def.name),
+                    data.text_format(
+                        "message_house_style_floater",
+                        [("style", def.name.clone())].as_slice(),
+                    ),
                     crate::state::FloaterKind::Renown,
                     crate::state::FloaterAnchor::Header,
                 );
@@ -185,10 +197,12 @@ pub fn apply_ui_command(
             crate::gameplay::confirm_prestige(&perk_id, data, game_state, progression_state);
         }
         UiCommand::StartNextDay => {
-            game_state.day_cycle.start_next_day();
-            game_state.add_message(format!(
-                "Day {} - the doors open. Make it count.",
-                game_state.day_cycle.day
+            let next_day = game_state.day_cycle.day.saturating_add(1);
+            let next_goal = crate::engine::select_next_day_goal(data, next_day, progression_state);
+            game_state.day_cycle.start_next_day(next_goal.id);
+            game_state.add_message(data.text_format(
+                "message_day_start",
+                [("day", game_state.day_cycle.day.to_string())].as_slice(),
             ));
         }
     }
@@ -203,7 +217,7 @@ pub fn handle_keyboard_shortcuts(
 ) {
     if is_key_pressed(KeyCode::C) {
         *selected_station = None;
-        clear_player_carry(game_state);
+        clear_player_carry(data, game_state);
         return;
     }
     if game_state.player.action_lock_ms > 0.0 {
@@ -238,7 +252,11 @@ pub fn handle_keyboard_shortcuts(
     }
 }
 
-pub fn clear_empty_selection(selected_station: &mut Option<String>, game_state: &mut GameState) {
+pub fn clear_empty_selection(
+    data: &GameData,
+    selected_station: &mut Option<String>,
+    game_state: &mut GameState,
+) {
     let should_clear = selected_station.as_ref().is_some_and(|station| {
         game_state
             .cooking_stations
@@ -248,7 +266,7 @@ pub fn clear_empty_selection(selected_station: &mut Option<String>, game_state: 
     if should_clear {
         *selected_station = None;
         if !game_state.player.clear_carry_on_arrival {
-            clear_player_carry(game_state);
+            clear_player_carry(data, game_state);
         }
     }
 }
@@ -270,7 +288,7 @@ fn serve_selected_customer(
             progression_state,
             guest_state,
         ) {
-            send_player_to_customer(customer_id, &station_color, game_state);
+            send_player_to_customer(customer_id, &station_color, data, game_state);
             *selected_station = None;
         }
     } else {
@@ -298,7 +316,7 @@ fn invite_selected_customer(
             set_player_target(game_state, x, y, "VIP", None, false);
         }
         *selected_station = None;
-        clear_player_carry(game_state);
+        clear_player_carry(data, game_state);
     }
 }
 

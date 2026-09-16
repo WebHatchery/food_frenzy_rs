@@ -41,15 +41,29 @@ pub(super) fn update_patience(
             let (floor_x, floor_y) = (customer.floor_x, customer.floor_y);
             progression.add_currency(paid);
             progression.record_customer_lost();
-            game_state
-                .floaters
-                .spawn_at("walked out!", FloaterKind::Alert, floor_x, floor_y);
+            game_state.floaters.spawn_at(
+                data.text("message_walked_out_floater"),
+                FloaterKind::Alert,
+                floor_x,
+                floor_y,
+            );
             if paid > 0 {
-                game_state.add_message(format!(
-                    "{name} left unhappy ({served}/{ordered} courses), only paid ${paid}."
-                ));
+                game_state.add_message(
+                    data.text_format(
+                        "message_left_unhappy_paid",
+                        [
+                            ("name", name.clone()),
+                            ("served", served.to_string()),
+                            ("ordered", ordered.to_string()),
+                            ("paid", paid.to_string()),
+                        ]
+                        .as_slice(),
+                    ),
+                );
             } else {
-                game_state.add_message(format!("{name} left hungry and unhappy. A shame."));
+                game_state.add_message(
+                    data.text_format("message_left_hungry", [("name", name)].as_slice()),
+                );
             }
         }
 
@@ -114,7 +128,7 @@ pub fn update_departures(
         let mut tip_notes = String::new();
         if customer.traits(data).big_tipper {
             tip *= 2;
-            tip_notes.push_str(" A big tipper!");
+            tip_notes.push_str(data.text("message_big_tipper"));
         }
         if event_tip_multiplier > 1.0 {
             tip = ((tip as f64) * event_tip_multiplier).round() as i64;
@@ -128,15 +142,25 @@ pub fn update_departures(
         let ready = fed >= visits_until_ready_for(data, &customer.customer_type);
         any_ready |= ready;
         let ready_hint = if ready {
-            " Plump enough for the Lounge next visit."
+            data.text("message_plump_next_visit")
         } else {
             ""
         };
         floaters.push((format!("+${paid}"), customer.floor_x, customer.floor_y));
-        messages.push(format!(
-            "{} left glowing and settled ${paid} (${bill} +${tip} tip).{tip_notes}{ready_hint}",
-            customer.display_name
-        ));
+        messages.push(
+            data.text_format(
+                "message_left_glowing",
+                [
+                    ("name", customer.display_name.clone()),
+                    ("paid", paid.to_string()),
+                    ("bill", bill.to_string()),
+                    ("tip", tip.to_string()),
+                    ("tip_notes", tip_notes),
+                    ("ready_hint", ready_hint.to_string()),
+                ]
+                .as_slice(),
+            ),
+        );
     }
 
     game_state

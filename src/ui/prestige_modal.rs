@@ -40,7 +40,7 @@ pub(super) fn draw_prestige_modal(game: &GameState, data: &GameData, ui: &mut Ui
     let total_h = card_h * rows as f32 + CARD_GAP * (rows as f32 - 1.0);
     let top = height * 0.5 - total_h * 0.5;
 
-    let headline = "PRESTIGE - WHAT SURVIVES THE RESET?";
+    let headline = data.text("ui_prestige_question");
     let headline_dim = measure_ui_text(headline, None, 24, 1.0);
     draw_ui_text(
         headline,
@@ -86,7 +86,7 @@ pub(super) fn draw_prestige_modal(game: &GameState, data: &GameData, ui: &mut Ui
             y += 17.0;
         }
         draw_ui_text(
-            "click to prestige",
+            data.text("ui_click_prestige"),
             card.x + 14.0,
             card.y + card.h - 12.0,
             12.0,

@@ -233,7 +233,8 @@ impl App {
     }
 
     fn tick_title(&mut self) {
-        let title_hits = draw_title_screen(self.title_texture.as_ref(), &self.title_message);
+        let title_hits =
+            draw_title_screen(self.title_texture.as_ref(), &self.title_message, &self.data);
         if let Some(action) = read_title_action(&title_hits) {
             self.handle_title_action(action);
         }
@@ -244,7 +245,8 @@ impl App {
     }
 
     fn tick_settings(&mut self) {
-        let settings_hits = draw_settings_screen(self.fullscreen_enabled, self.audio.enabled);
+        let settings_hits =
+            draw_settings_screen(self.fullscreen_enabled, self.audio.enabled, &self.data);
         if let Some(action) = read_settings_action(&settings_hits) {
             match action {
                 SettingsAction::ToggleFullscreen => {
@@ -316,7 +318,7 @@ impl App {
                 &mut self.progression_state,
                 &mut self.guest_state,
             );
-            clear_empty_selection(&mut self.selected_station, &mut self.game_state);
+            clear_empty_selection(&self.data, &mut self.selected_station, &mut self.game_state);
         }
         self.drain_sfx();
         self.save_if_due(dt_ms);
@@ -442,7 +444,10 @@ impl App {
             &self.timers,
             &self.selected_station,
         ) {
-            self.game_state.add_message(format!("Save failed: {error}"));
+            self.game_state.add_message(
+                self.data
+                    .text_format("message_missing_save", [("error", error)].as_slice()),
+            );
         }
     }
 }

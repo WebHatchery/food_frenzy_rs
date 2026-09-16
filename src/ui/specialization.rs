@@ -56,7 +56,7 @@ pub(super) fn draw_specialization_modal(
     let total_h = card_h * rows as f32 + CARD_GAP * (rows as f32 - 1.0);
     let top = height * 0.5 - total_h * 0.5;
 
-    let headline = "CHOOSE YOUR HOUSE STYLE";
+    let headline = data.text("ui_house_style");
     let headline_dim = measure_ui_text(headline, None, 26, 1.0);
     draw_ui_text(
         headline,
@@ -65,7 +65,7 @@ pub(super) fn draw_specialization_modal(
         26.0,
         GOLD,
     );
-    let sub = "The first guest has joined the menu. What kind of house is this?";
+    let sub = data.text("ui_house_style_subtitle");
     let sub_dim = measure_ui_text(sub, None, 16, 1.0);
     draw_ui_text(
         sub,
@@ -84,11 +84,16 @@ pub(super) fn draw_specialization_modal(
             card_w,
             card_h,
         );
-        draw_specialization_card(card, spec, ui);
+        draw_specialization_card(card, spec, data, ui);
     }
 }
 
-fn draw_specialization_card(card: Rect, spec: &SpecializationDef, ui: &mut UiActions) {
+fn draw_specialization_card(
+    card: Rect,
+    spec: &SpecializationDef,
+    data: &GameData,
+    ui: &mut UiActions,
+) {
     let mouse = vec2(mouse_position().0, mouse_position().1);
     let hovered = card.contains(mouse);
     draw_rectangle(
@@ -124,7 +129,7 @@ fn draw_specialization_card(card: Rect, spec: &SpecializationDef, ui: &mut UiAct
         let text = format!(
             "{} {}",
             if good { "+" } else { "-" },
-            describe_effect(&key, value)
+            describe_effect(data, &key, value)
         );
         draw_ui_text(
             &text,
@@ -147,7 +152,7 @@ fn draw_specialization_card(card: Rect, spec: &SpecializationDef, ui: &mut UiAct
     }
 
     draw_ui_text(
-        "click to commit",
+        data.text("ui_click_commit"),
         card.x + 16.0,
         card.y + card.h - 12.0,
         12.0,
@@ -180,18 +185,21 @@ fn effect_reads_as_buff(key: &str, value: f64) -> bool {
     }
 }
 
-fn describe_effect(key: &str, value: f64) -> String {
+fn describe_effect(data: &GameData, key: &str, value: f64) -> String {
     let percent = (value.abs() * 100.0).round() as i64;
-    match key {
-        "meat_yield_multiplier" => format!("{percent}% Lounge meat yield"),
-        "patience_multiplier" => format!("{percent}% guest patience"),
-        "combo_multiplier" => format!("{percent}% combo bonus"),
-        "cook_time_multiplier" => format!("{percent}% cooking time"),
-        "spawn_interval_multiplier" => format!("{percent}% time between guests"),
-        "satisfaction_decay_multiplier" => format!("{percent}% appetite decay"),
-        "recipe_value_multiplier" => format!("{percent}% recipe value"),
-        "capacity_gain_multiplier" => format!("{percent}% capacity gains"),
-        "max_customers_bonus" => format!("{} table(s)", value.abs().round() as i64),
-        _ => format!("{percent}% {key}"),
-    }
+    let text_key = format!("effect_{key}");
+    let template = if data.text(&text_key).is_empty() {
+        "effect_unknown"
+    } else {
+        &text_key
+    };
+    data.text_format(
+        template,
+        [
+            ("percent", percent.to_string()),
+            ("count", value.abs().round().to_string()),
+            ("key", key.to_string()),
+        ]
+        .as_slice(),
+    )
 }

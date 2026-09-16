@@ -24,6 +24,9 @@ pub struct DayCycle {
     pub summary_pending: bool,
     /// Whether this day's dining event has already fired.
     pub event_fired: bool,
+    /// Data-driven objective shown in the closing ledger for the next shift.
+    #[serde(default)]
+    pub goal_id: String,
     pub stats: DayStats,
 }
 
@@ -34,6 +37,7 @@ impl Default for DayCycle {
             elapsed_ms: 0.0,
             summary_pending: false,
             event_fired: false,
+            goal_id: String::new(),
             stats: DayStats::default(),
         }
     }
@@ -53,11 +57,12 @@ impl DayCycle {
         false
     }
 
-    pub fn start_next_day(&mut self) {
+    pub fn start_next_day(&mut self, goal_id: String) {
         self.day = self.day.saturating_add(1);
         self.elapsed_ms = 0.0;
         self.summary_pending = false;
         self.event_fired = false;
+        self.goal_id = goal_id;
         self.stats = DayStats::default();
     }
 

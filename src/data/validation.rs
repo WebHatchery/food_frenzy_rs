@@ -1,12 +1,13 @@
 //! Semantic validation for the typed Feast Frenzy content catalog.
 
-use super::{GameData, PerkEffect};
+use super::{GameData, GoalKind, PerkEffect};
 use std::collections::HashSet;
 
 impl GameData {
     pub fn validate(&self) -> Result<(), String> {
         self.validate_ids()?;
         self.validate_references()?;
+        self.validate_goals()?;
         self.validate_balance()
     }
 
@@ -82,6 +83,13 @@ impl GameData {
                     .map(|item| item.id.as_str())
                     .collect::<Vec<_>>(),
             ),
+            (
+                "goal",
+                self.goals
+                    .iter()
+                    .map(|item| item.id.as_str())
+                    .collect::<Vec<_>>(),
+            ),
         ];
         for (kind, ids) in collections {
             if ids.iter().any(|id| id.trim().is_empty()) {
@@ -90,6 +98,35 @@ impl GameData {
             let mut seen = HashSet::new();
             if ids.iter().any(|id| !seen.insert(*id)) {
                 return Err(format!("duplicate {kind} id"));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_goals(&self) -> Result<(), String> {
+        if self
+            .ui_text
+            .entries
+            .values()
+            .any(|value| value.trim().is_empty())
+        {
+            return Err("ui text catalog contains an empty value".to_string());
+        }
+        for goal in &self.goals {
+            if goal.min_day == 0 {
+                return Err(format!("goal {} has an invalid minimum day", goal.id));
+            }
+            let valid = match goal.kind {
+                GoalKind::ServeCourses { target } | GoalKind::ServeFreshDishes { target } => {
+                    target > 0
+                }
+                GoalKind::CompleteDiningEvent
+                | GoalKind::ProcessRegular
+                | GoalKind::AttractClientele
+                | GoalKind::Prestige => true,
+            };
+            if !valid {
+                return Err(format!("goal {} has a non-positive target", goal.id));
             }
         }
         Ok(())

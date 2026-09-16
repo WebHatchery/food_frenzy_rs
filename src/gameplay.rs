@@ -27,14 +27,15 @@ pub fn try_prestige(
 ) {
     let requirement = prestige_requirement(data, progression);
     if !progression.can_prestige(requirement) {
-        game_state.add_message(format!(
-            "Prestige needs {requirement} renown. Keep the kitchen busy."
+        game_state.add_message(data.text_format(
+            "message_prestige_needs",
+            [("requirement", requirement.to_string())].as_slice(),
         ));
         return;
     }
     if data.prestige_perks.is_empty() {
         progression.prestige(data, None);
-        announce_prestige(game_state, progression);
+        announce_prestige(data, game_state, progression);
     } else {
         // Opens the perk-choice modal; `confirm_prestige` finishes the job.
         game_state.pending_prestige = true;
@@ -63,17 +64,23 @@ pub fn confirm_prestige(
             *entry = entry.saturating_add((*amount).max(0));
         }
     }
-    game_state.add_message(format!("Perk secured: {}.", perk.name));
-    announce_prestige(game_state, progression);
+    game_state.add_message(data.text_format(
+        "message_perk_secured",
+        [("perk", perk.name.clone())].as_slice(),
+    ));
+    announce_prestige(data, game_state, progression);
 }
 
-fn announce_prestige(game_state: &mut GameState, progression: &ProgressionState) {
-    game_state.add_message(format!(
-        "Prestige complete! The house reopens at level {}.",
-        progression.prestige_level
+fn announce_prestige(data: &GameData, game_state: &mut GameState, progression: &ProgressionState) {
+    game_state.add_message(data.text_format(
+        "message_prestige_complete",
+        [("level", progression.prestige_level.to_string())].as_slice(),
     ));
     game_state.floaters.spawn(
-        format!("Prestige {}!", progression.prestige_level),
+        data.text_format(
+            "message_prestige_level",
+            [("level", progression.prestige_level.to_string())].as_slice(),
+        ),
         FloaterKind::Renown,
         FloaterAnchor::Header,
     );
@@ -117,19 +124,24 @@ pub fn serve_customer(
         return false;
     };
     if !game_state.customers[pos].is_seated {
-        game_state.add_message(format!(
-            "{} is still walking to their table.",
-            game_state.customers[pos].display_name
+        game_state.add_message(data.text_format(
+            "message_guest_walking",
+            [("name", game_state.customers[pos].display_name.clone())].as_slice(),
         ));
         return false;
     }
 
     let Some(course_idx) = game_state.customers[pos].next_course_for(station_color) else {
-        game_state.add_message(format!(
-            "{} didn't order {}.",
-            game_state.customers[pos].display_name,
-            dish_display_name(data, station_color)
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_did_not_order",
+                [
+                    ("name", game_state.customers[pos].display_name.clone()),
+                    ("dish", dish_display_name(data, station_color)),
+                ]
+                .as_slice(),
+            ),
+        );
         return false;
     };
 
@@ -212,10 +224,21 @@ pub fn serve_customer(
     progression.record_combo_peak(game_state.combo);
     let current_combo = game_state.combo;
     game_state.day_cycle.record_combo(current_combo);
-    game_state.add_message(format!(
-        "{} served {course_label} ({dish_name}) +{total_gain} pts, tab ${running_tab} [{courses_done}/{courses_total}]",
-        game_state.customers[pos].display_name
-    ));
+    game_state.add_message(
+        data.text_format(
+            "message_serve_result",
+            [
+                ("name", game_state.customers[pos].display_name.clone()),
+                ("course", course_label),
+                ("dish", dish_name),
+                ("points", total_gain.to_string()),
+                ("tab", running_tab.to_string()),
+                ("done", courses_done.to_string()),
+                ("total", courses_total.to_string()),
+            ]
+            .as_slice(),
+        ),
+    );
     let (floor_x, floor_y) = {
         let customer = &game_state.customers[pos];
         (customer.floor_x, customer.floor_y)
@@ -241,23 +264,23 @@ pub fn serve_customer(
         CoursePacing::Rushed => {
             let name = game_state.customers[pos].display_name.clone();
             game_state.floaters.spawn_at(
-                "rushed - still eating!",
+                data.text("ui_rushed_floater"),
                 FloaterKind::Alert,
                 floor_x,
                 floor_y,
             );
-            game_state.add_message(format!(
-                "{name} was still eating - the rushed course only earned partial renown."
-            ));
+            game_state.add_message(data.text_format("message_rushed", [("name", name)].as_slice()));
         }
         CoursePacing::KeptWaiting => {
             let name = game_state.customers[pos].display_name.clone();
+            game_state.floaters.spawn_at(
+                data.text("ui_waiting_floater"),
+                FloaterKind::Alert,
+                floor_x,
+                floor_y,
+            );
             game_state
-                .floaters
-                .spawn_at("kept waiting...", FloaterKind::Alert, floor_x, floor_y);
-            game_state.add_message(format!(
-                "{name} sat hungry too long between courses - reduced renown."
-            ));
+                .add_message(data.text_format("message_kept_waiting", [("name", name)].as_slice()));
         }
         _ => {}
     }
@@ -282,15 +305,28 @@ fn award_streak_bonuses(
         let bonus = data.balance.combo_milestone_cash * i64::from(game_state.combo / interval);
         progression.add_currency(bonus);
         game_state.floaters.spawn_at(
-            format!("Streak x{}! +${bonus}", game_state.combo),
+            data.text_format(
+                "message_streak_floater",
+                [
+                    ("combo", game_state.combo.to_string()),
+                    ("bonus", bonus.to_string()),
+                ]
+                .as_slice(),
+            ),
             FloaterKind::Cash,
             floor_x,
             floor_y,
         );
-        game_state.add_message(format!(
-            "Service streak x{} pays a ${bonus} bonus.",
-            game_state.combo
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_streak",
+                [
+                    ("combo", game_state.combo.to_string()),
+                    ("bonus", bonus.to_string()),
+                ]
+                .as_slice(),
+            ),
+        );
     }
 
     if game_state.full_room_bonus_armed
@@ -305,11 +341,14 @@ fn award_streak_bonuses(
         let points = data.balance.full_room_bonus_points * game_state.customers.len().max(1) as i64;
         let awarded = add_score(data, game_state, progression, points as f64, false);
         game_state.floaters.spawn(
-            format!("Full house served! +{awarded} renown"),
+            data.text_format(
+                "message_full_house_floater",
+                [("points", awarded.to_string())].as_slice(),
+            ),
             FloaterKind::Renown,
             FloaterAnchor::Header,
         );
-        game_state.add_message("Every table served at once - the room applauds.".to_string());
+        game_state.add_message(data.text("message_full_house"));
     }
 }
 
@@ -321,16 +360,14 @@ pub fn invite_customer_to_vip(
     guest_state: &mut GuestState,
 ) -> bool {
     if game_state.special_table_busy {
-        game_state.add_message("Last Meal Lounge is occupied right now.".to_string());
+        game_state.add_message(data.text("message_lounge_occupied"));
         return false;
     }
     if matches!(
         game_state.active_event_effect(data),
         Some(EventEffect::LoungeClosed)
     ) {
-        game_state.add_message(
-            "The inspector is still poking around - the Lounge stays shut.".to_string(),
-        );
+        game_state.add_message(data.text("message_inspector"));
         return false;
     }
 
@@ -342,29 +379,37 @@ pub fn invite_customer_to_vip(
         return false;
     };
     if !game_state.customers[index].is_seated {
-        game_state.add_message(format!(
-            "{} needs to sit before lounge service.",
-            game_state.customers[index].display_name
+        game_state.add_message(data.text_format(
+            "message_lounge_needs_seat",
+            [("name", game_state.customers[index].display_name.clone())].as_slice(),
         ));
         return false;
     }
     if !can_process_customer(&game_state.customers[index], data) {
         let customer = &game_state.customers[index];
         let needed = visits_until_ready_for(data, &customer.customer_type);
-        game_state.add_message(format!(
-            "{} isn't plump enough yet — {} more visits ({}/{}).",
-            customer.display_name,
-            needed.saturating_sub(customer.times_fed),
-            customer.times_fed,
-            needed
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_not_plump",
+                [
+                    ("name", customer.display_name.clone()),
+                    (
+                        "remaining",
+                        needed.saturating_sub(customer.times_fed).to_string(),
+                    ),
+                    ("fed", customer.times_fed.to_string()),
+                    ("needed", needed.to_string()),
+                ]
+                .as_slice(),
+            ),
+        );
         return false;
     }
 
     if !crate::engine::chance(data.balance.vip_accept_chance) {
-        game_state.add_message(format!(
-            "{} declined the invitation.",
-            game_state.customers[index].display_name
+        game_state.add_message(data.text_format(
+            "message_vip_declined",
+            [("name", game_state.customers[index].display_name.clone())].as_slice(),
         ));
         return false;
     }
@@ -410,10 +455,18 @@ pub fn invite_customer_to_vip(
     progression.record_processed_customer(&customer.customer_type, chain_value);
     game_state.special_table_busy = true;
     game_state.special_table_timer = data.balance.special_table_process_time;
-    game_state.add_message(format!(
-        "{} steps into the Last Meal Lounge. Larder +{} {} (+{} renown).",
-        customer.display_name, meat_gain, meat_type, awarded
-    ));
+    game_state.add_message(
+        data.text_format(
+            "message_lounge_started",
+            [
+                ("name", customer.display_name.clone()),
+                ("meat", meat_gain.to_string()),
+                ("meat_type", meat_type.clone()),
+                ("points", awarded.to_string()),
+            ]
+            .as_slice(),
+        ),
+    );
     game_state.day_cycle.stats.renown_earned += awarded;
     game_state.day_cycle.stats.cash_earned += cash_gain;
     // Rewards are already banked above; the cinematic only stages the moment.
@@ -442,25 +495,34 @@ pub fn attract_customer_type(
     progression: &mut ProgressionState,
 ) {
     let Some(customer_type) = data.customer_type_by_id(customer_type_id) else {
-        game_state.add_message("Unknown clientele.".to_string());
+        game_state.add_message(data.text("message_unknown_clientele"));
         return;
     };
     if progression.is_customer_unlocked(customer_type_id) {
-        game_state.add_message(format!("{} already visits the cafe.", customer_type.name));
+        game_state.add_message(data.text_format(
+            "message_already_visits",
+            [("name", customer_type.name.clone())].as_slice(),
+        ));
         return;
     }
 
     let missing = missing_ingredients(game_state, &customer_type.unlock_cost);
     if !missing.is_empty() {
-        game_state.add_message(format!(
-            "Need more ingredients to attract {}: {}.",
-            customer_type.name,
-            missing.join(", ")
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_attract_missing",
+                [
+                    ("name", customer_type.name.clone()),
+                    ("missing", missing.join(", ")),
+                ]
+                .as_slice(),
+            ),
+        );
         return;
     }
 
     if !spend_ingredients(
+        data,
         game_state,
         &customer_type.unlock_cost,
         "attracting clientele",
@@ -469,9 +531,9 @@ pub fn attract_customer_type(
     }
 
     if progression.unlock_customer_type(customer_type_id) {
-        game_state.add_message(format!(
-            "{} clientele unlocked. They can now walk in.",
-            customer_type.name
+        game_state.add_message(data.text_format(
+            "message_clientele_unlocked",
+            [("name", customer_type.name.clone())].as_slice(),
         ));
     }
 }
@@ -487,13 +549,16 @@ pub fn craft_recipe(
         .iter()
         .position(|recipe| recipe.id == recipe_id)
     else {
-        game_state.add_message("Unknown recipe.".to_string());
+        game_state.add_message(data.text("message_unknown_recipe"));
         return;
     };
 
     let recipe = progression.recipes[index].clone();
     if !recipe.unlocked {
-        game_state.add_message(format!("{} is locked.", recipe.name));
+        game_state.add_message(data.text_format(
+            "message_recipe_locked",
+            [("recipe", recipe.name.clone())].as_slice(),
+        ));
         return;
     }
 
@@ -507,11 +572,14 @@ pub fn craft_recipe(
         .iter()
         .all(|(ingredient, amount)| game_state.has_ing(ingredient, *amount))
     {
-        game_state.add_message(format!("Not enough ingredients for {}.", recipe.name));
+        game_state.add_message(data.text_format(
+            "message_recipe_missing",
+            [("recipe", recipe.name.clone())].as_slice(),
+        ));
         return;
     }
 
-    if !spend_ingredient_pairs(game_state, &required, "crafting") {
+    if !spend_ingredient_pairs(data, game_state, &required, "crafting") {
         return;
     }
 
@@ -526,9 +594,26 @@ pub fn craft_recipe(
     game_state.day_cycle.stats.cash_earned += cash_gain;
     let bonus_capacity = recipe_capacity_gain(progression, recipe.capacity_bonus);
     progression.record_crafted_recipe(&recipe.id, bonus_capacity);
-    game_state.add_message(format!("Crafted {} for {} points.", recipe.name, awarded));
+    game_state.add_message(
+        data.text_format(
+            "message_recipe_crafted",
+            [
+                ("recipe", recipe.name.clone()),
+                ("points", awarded.to_string()),
+            ]
+            .as_slice(),
+        ),
+    );
     game_state.floaters.spawn(
-        format!("{}: +{} renown, +${}", recipe.name, awarded, cash_gain),
+        data.text_format(
+            "message_crafted_floater",
+            [
+                ("recipe", recipe.name.clone()),
+                ("points", awarded.to_string()),
+                ("cash", cash_gain.to_string()),
+            ]
+            .as_slice(),
+        ),
         FloaterKind::Renown,
         FloaterAnchor::Header,
     );
@@ -551,6 +636,7 @@ fn missing_ingredients(
 }
 
 fn spend_ingredients(
+    data: &GameData,
     game_state: &mut GameState,
     cost: &std::collections::HashMap<String, i64>,
     context: &str,
@@ -559,17 +645,27 @@ fn spend_ingredients(
         .iter()
         .map(|(ingredient, amount)| (ingredient.clone(), *amount))
         .collect();
-    spend_ingredient_pairs(game_state, &pairs, context)
+    spend_ingredient_pairs(data, game_state, &pairs, context)
 }
 
 fn spend_ingredient_pairs(
+    data: &GameData,
     game_state: &mut GameState,
     pairs: &[(String, i64)],
     context: &str,
 ) -> bool {
     for (ingredient, amount) in pairs {
         if !game_state.remove_ingredients(ingredient, *amount) {
-            game_state.add_message(format!("Missing {ingredient} while {context}."));
+            game_state.add_message(
+                data.text_format(
+                    "message_missing_ingredients",
+                    [
+                        ("ingredient", ingredient.clone()),
+                        ("context", context.to_string()),
+                    ]
+                    .as_slice(),
+                ),
+            );
             return false;
         }
     }

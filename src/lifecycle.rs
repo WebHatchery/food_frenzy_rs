@@ -27,7 +27,7 @@ pub fn start_new_game(
         game_state,
         selected_station,
         timers,
-        "New game started",
+        data.text("message_new_game"),
     );
 }
 
@@ -40,7 +40,7 @@ pub fn load_saved_game(
     selected_station: &mut Option<String>,
 ) -> Result<(), String> {
     let Some(saved) = load_game().map_err(|error| format!("Load failed: {error}"))? else {
-        return Err("No saved game found.".to_string());
+        return Err(data.text("message_no_save").to_string());
     };
 
     restore_save(
@@ -75,7 +75,7 @@ fn restore_save(
         game_state,
         selected_station,
         timers,
-        "Loaded game save",
+        data.text("message_loaded_game"),
     );
 }
 
@@ -90,6 +90,12 @@ fn initialize_active_game(
     progression.ensure_customer_unlocks(data);
     ensure_compatibility(data, progression, game_state, selected_station);
     progression.set_upgrade_costs();
+    if game_state.day_cycle.goal_id.is_empty()
+        || data.goal_by_id(&game_state.day_cycle.goal_id).is_none()
+    {
+        game_state.day_cycle.goal_id =
+            crate::engine::select_next_day_goal(data, game_state.day_cycle.day, progression).id;
+    }
     if !startup_message.is_empty()
         && !game_state
             .messages

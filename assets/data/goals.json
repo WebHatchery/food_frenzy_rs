@@ -1,0 +1,44 @@
+[
+  {
+    "id": "steady-service",
+    "title": "A steady hand",
+    "description": "Serve 8 courses with the room still smiling.",
+    "min_day": 1,
+    "kind": { "kind": "serve_courses", "target": 8 }
+  },
+  {
+    "id": "fresh-pass",
+    "title": "Fresh from the pass",
+    "description": "Serve 4 dishes before they lose their fresh shine.",
+    "min_day": 1,
+    "kind": { "kind": "serve_fresh_dishes", "target": 4 }
+  },
+  {
+    "id": "eventful-evening",
+    "title": "Keep your cool",
+    "description": "Complete the dining event without closing the doors.",
+    "min_day": 2,
+    "kind": { "kind": "complete_dining_event" }
+  },
+  {
+    "id": "regular-ritual",
+    "title": "Know the regulars",
+    "description": "Process one regular guest in the Last Meal Lounge.",
+    "min_day": 3,
+    "kind": { "kind": "process_regular" }
+  },
+  {
+    "id": "ladder-climb",
+    "title": "Climb the ladder",
+    "description": "Attract the next clientele type for the house.",
+    "min_day": 1,
+    "kind": { "kind": "attract_clientele" }
+  },
+  {
+    "id": "house-reset",
+    "title": "A bigger name",
+    "description": "Fill the renown bar and choose a lasting prestige perk.",
+    "min_day": 1,
+    "kind": { "kind": "prestige" }
+  }
+]

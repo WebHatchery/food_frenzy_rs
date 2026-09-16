@@ -19,7 +19,7 @@ pub(super) fn draw_growth_panel(
     ui: &mut UiActions,
 ) {
     draw_panel(panel);
-    draw_centered_section_title("Guests", panel);
+    draw_centered_section_title(data.text("label_guests"), panel);
 
     let x = panel.x + 14.0;
     let w = panel.w - 28.0;
@@ -43,13 +43,13 @@ pub(super) fn draw_growth_panel(
     );
 
     draw_guest_card(guests, game, progression, data, ui);
-    draw_upgrade_card(upgrades, progression, ui);
-    draw_pantry_card(pantry, game);
-    draw_recipe_card(recipes, progression, ui);
+    draw_upgrade_card(upgrades, progression, data, ui);
+    draw_pantry_card(pantry, game, data);
+    draw_recipe_card(recipes, progression, data, ui);
     draw_prestige_card(prestige, progression, data, ui);
 }
 
-pub(super) fn draw_event_feed(rect: Rect, game: &GameState) {
+pub(super) fn draw_event_feed(rect: Rect, game: &GameState, data: &GameData) {
     draw_rectangle(
         rect.x,
         rect.y,
@@ -58,7 +58,13 @@ pub(super) fn draw_event_feed(rect: Rect, game: &GameState) {
         Color::new(0.045, 0.040, 0.048, 0.98),
     );
     draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 1.0, LINE);
-    draw_ui_text("Latest Events", rect.x + 16.0, rect.y + 26.0, 18.0, GOLD);
+    draw_ui_text(
+        data.text("ui_latest_events"),
+        rect.x + 16.0,
+        rect.y + 26.0,
+        18.0,
+        GOLD,
+    );
 
     let mut x = rect.x + 150.0;
     for message in game.messages.iter().rev().take(5) {
@@ -83,16 +89,16 @@ fn draw_guest_card(
     data: &GameData,
     ui: &mut UiActions,
 ) {
-    draw_card(card, "Guests");
+    draw_card(card, data.text("label_guests"));
     // Open the full clientele ladder overlay.
     let board_button = Rect::new(card.x + card.w - 72.0, card.y + 8.0, 60.0, 24.0);
-    draw_button(board_button, "Ladder", true, false);
+    draw_button(board_button, data.text("ui_ladder"), true, false);
     if ui.clientele_board_toggle.is_none() {
         ui.clientele_board_toggle = Some(board_button);
     }
     if game.customers.is_empty() {
         draw_ui_text(
-            "Waiting for arrivals",
+            data.text("ui_waiting_arrivals"),
             card.x + 12.0,
             card.y + 54.0,
             15.0,
@@ -118,9 +124,9 @@ fn draw_guest_card(
             );
             draw_ui_text(
                 if customer.is_seated {
-                    "seated"
+                    data.text("ui_guest_seated")
                 } else {
-                    "arriving"
+                    data.text("ui_guest_arriving")
                 },
                 card.x + card.w - 78.0,
                 y,
@@ -131,7 +137,13 @@ fn draw_guest_card(
     }
 
     let next_y = card.y + card.h - 58.0;
-    draw_ui_text("Next Clientele", card.x + 12.0, next_y, 14.0, GOLD);
+    draw_ui_text(
+        data.text("ui_next_clientele"),
+        card.x + 12.0,
+        next_y,
+        14.0,
+        GOLD,
+    );
     let mut locked_customer_types: Vec<_> = data
         .customer_types
         .iter()
@@ -160,12 +172,17 @@ fn draw_guest_card(
             MUTED,
         );
         let button_rect = Rect::new(card.x + card.w - 86.0, next_y + 13.0, 72.0, 30.0);
-        draw_button(button_rect, "Attract", can_attract, !can_attract);
+        draw_button(
+            button_rect,
+            data.text("ui_attract"),
+            can_attract,
+            !can_attract,
+        );
         ui.attract_buttons
             .insert(customer_type.id.clone(), button_rect);
     } else {
         draw_ui_text(
-            "All known guests unlocked",
+            data.text("ui_all_guests_unlocked"),
             card.x + 12.0,
             next_y + 25.0,
             15.0,
@@ -174,8 +191,13 @@ fn draw_guest_card(
     }
 }
 
-fn draw_upgrade_card(card: Rect, progression: &ProgressionState, ui: &mut UiActions) {
-    draw_card(card, "Upgrades");
+fn draw_upgrade_card(
+    card: Rect,
+    progression: &ProgressionState,
+    data: &GameData,
+    ui: &mut UiActions,
+) {
+    draw_card(card, data.text("ui_upgrades"));
     let mut y = card.y + 52.0;
     let row_gap = ((card.h - 54.0) / 2.0).clamp(30.0, 48.0);
     for upgrade in progression.upgrades.iter().take(2) {
@@ -200,18 +222,18 @@ fn draw_upgrade_card(card: Rect, progression: &ProgressionState, ui: &mut UiActi
             SUCCESS,
         );
         let button_rect = Rect::new(card.x + card.w - 82.0, y - 18.0, 68.0, 30.0);
-        draw_button(button_rect, "Upgrade", can_buy, !can_buy);
+        draw_button(button_rect, data.text("ui_upgrade"), can_buy, !can_buy);
         ui.upgrade_buttons.insert(upgrade.id.clone(), button_rect);
         y += row_gap;
     }
 }
 
-fn draw_pantry_card(card: Rect, game: &GameState) {
-    draw_card(card, "Pantry");
+fn draw_pantry_card(card: Rect, game: &GameState, data: &GameData) {
+    draw_card(card, data.text("ui_pantry"));
     let ingredients = sorted_ingredient_lines(game);
     if ingredients.is_empty() {
         draw_ui_text(
-            "The larder is bare",
+            data.text("ui_larder_bare"),
             card.x + 12.0,
             card.y + 62.0,
             15.0,
@@ -253,8 +275,13 @@ fn draw_pantry_card(card: Rect, game: &GameState) {
     }
 }
 
-fn draw_recipe_card(card: Rect, progression: &ProgressionState, ui: &mut UiActions) {
-    draw_card(card, "Recipes");
+fn draw_recipe_card(
+    card: Rect,
+    progression: &ProgressionState,
+    data: &GameData,
+    ui: &mut UiActions,
+) {
+    draw_card(card, data.text("ui_recipes"));
     let slots = 4;
     let gap = 8.0;
     let slot_w = (card.w - 24.0 - gap * (slots as f32 - 1.0)) / slots as f32;
@@ -297,7 +324,7 @@ fn draw_prestige_card(
     data: &GameData,
     ui: &mut UiActions,
 ) {
-    draw_card(card, "Prestige");
+    draw_card(card, data.text("ui_prestige"));
     let requirement = crate::engine::prestige_requirement(data, progression);
     let progress = progression.total_score as f32 / requirement.max(1) as f32;
     let compact = card.h < 108.0;

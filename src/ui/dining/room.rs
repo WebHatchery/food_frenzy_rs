@@ -58,7 +58,7 @@ pub(super) fn draw_floor_pattern(floor: Rect) {
     );
 }
 
-pub(super) fn draw_room_fixtures(floor: Rect) {
+pub(super) fn draw_room_fixtures(floor: Rect, data: &GameData) {
     let counter = Rect::new(floor.x + 18.0, floor.y + 18.0, floor.w * 0.34, 64.0);
     draw_rectangle(
         counter.x,
@@ -69,7 +69,7 @@ pub(super) fn draw_room_fixtures(floor: Rect) {
     );
     draw_rectangle_lines(counter.x, counter.y, counter.w, counter.h, 1.0, GOLD);
     draw_ui_text(
-        "Kitchen Pass",
+        data.text("ui_kitchen"),
         counter.x + 16.0,
         counter.y + 24.0,
         16.0,
@@ -210,21 +210,28 @@ pub(super) fn draw_last_meal_lounge(
         );
     }
     draw_ui_text(
-        "Last Meal Lounge",
+        data.text("ui_lounge_title"),
         lounge.x + 14.0,
         lounge.y + 23.0,
         17.0,
         TEXT,
     );
     let status = if game.special_table_busy {
-        format!(
-            "{:.0}s processing",
-            (game.special_table_timer / 1000.0).max(0.0)
+        data.text_format(
+            "ui_lounge_processing",
+            [(
+                "seconds",
+                format!("{:.0}", (game.special_table_timer / 1000.0).max(0.0)),
+            )]
+            .as_slice(),
         )
     } else if let Some(customer) = ready_guest {
-        format!("{} ready", ellipsize(&customer.display_name, 12))
+        data.text_format(
+            "ui_lounge_status_ready",
+            [("name", ellipsize(&customer.display_name, 12))].as_slice(),
+        )
     } else {
-        "locked".to_string()
+        data.text("ui_lounge_locked").to_string()
     };
     draw_ui_text(
         &status,
@@ -245,7 +252,7 @@ pub(super) fn draw_last_meal_lounge(
         );
     } else {
         draw_ui_text(
-            "Opens once a guest is plump",
+            data.text("ui_lounge_opens"),
             lounge.x + 14.0,
             lounge.y + lounge.h - 18.0,
             12.0,

@@ -6,7 +6,14 @@ use macroquad_toolkit::data_loader::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+mod balance;
+mod goals;
+mod text;
 mod validation;
+
+pub use balance::CinematicTiming;
+pub use goals::{GoalDef, GoalKind};
+pub use text::TextCatalog;
 
 const CUSTOMER_TYPES_JSON: &str =
     macroquad_toolkit::include_json_str!("../assets/data/customer_types.json");
@@ -28,6 +35,8 @@ const DINING_EVENTS_JSON: &str =
     macroquad_toolkit::include_json_str!("../assets/data/dining_events.json");
 const PRESTIGE_PERKS_JSON: &str =
     macroquad_toolkit::include_json_str!("../assets/data/prestige_perks.json");
+const UI_TEXT_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/ui_text.json");
+const GOALS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/goals.json");
 
 pub const STATION_COLORS: [&str; 4] = ["blue", "green", "yellow", "red"];
 
@@ -243,46 +252,6 @@ pub struct TraitBehavior {
     pub counter: String,
     pub hint: String,
     pub telegraphed: bool,
-}
-
-/// Configurable timing for the Last Meal Lounge presentation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CinematicTiming {
-    #[serde(default)]
-    pub escort_ms: f32,
-    #[serde(default)]
-    pub curtain_ms: f32,
-    #[serde(default)]
-    pub quiet_ms: f32,
-    #[serde(default)]
-    pub reveal_ms: f32,
-}
-
-fn default_escort_ms() -> f32 {
-    1_400.0
-}
-
-fn default_curtain_ms() -> f32 {
-    900.0
-}
-
-fn default_quiet_ms() -> f32 {
-    800.0
-}
-
-fn default_reveal_ms() -> f32 {
-    2_600.0
-}
-
-impl Default for CinematicTiming {
-    fn default() -> Self {
-        Self {
-            escort_ms: default_escort_ms(),
-            curtain_ms: default_curtain_ms(),
-            quiet_ms: default_quiet_ms(),
-            reveal_ms: default_reveal_ms(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -534,6 +503,8 @@ pub struct GameData {
     pub regulars: RegularsData,
     pub dining_events: Vec<EventDef>,
     pub prestige_perks: Vec<PrestigePerkDef>,
+    pub ui_text: TextCatalog,
+    pub goals: Vec<GoalDef>,
     pub balance: GameBalance,
 }
 
@@ -578,6 +549,8 @@ impl GameData {
                 "assets/data/prestige_perks.json",
                 PRESTIGE_PERKS_JSON,
             )?,
+            ui_text: parse_json_labeled("assets/data/ui_text.json", UI_TEXT_JSON)?,
+            goals: parse_json_labeled("assets/data/goals.json", GOALS_JSON)?,
             balance: parse_json_labeled("assets/data/game_balance.json", GAME_BALANCE_JSON)?,
         })
     }
@@ -709,6 +682,26 @@ impl GameData {
                 )
                 .expect("embedded prestige_perks.json must parse")
             }),
+            ui_text: load_json_file_with_fallback_sync(
+                "assets/data/ui_text.json",
+                UI_TEXT_JSON,
+                JsonFallbackPolicy::ReadOrParseError,
+            )
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: ui_text.json: {error}");
+                parse_json_labeled("embedded assets/data/ui_text.json", UI_TEXT_JSON)
+                    .expect("embedded ui_text.json must parse")
+            }),
+            goals: load_json_file_with_fallback_sync(
+                "assets/data/goals.json",
+                GOALS_JSON,
+                JsonFallbackPolicy::ReadOrParseError,
+            )
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: goals.json: {error}");
+                parse_json_labeled("embedded assets/data/goals.json", GOALS_JSON)
+                    .expect("embedded goals.json must parse")
+            }),
             balance: load_json_file_with_fallback_sync(
                 "assets/data/game_balance.json",
                 GAME_BALANCE_JSON,
@@ -764,5 +757,17 @@ impl GameData {
 
     pub fn prestige_perk_by_id(&self, id: &str) -> Option<&PrestigePerkDef> {
         self.prestige_perks.iter().find(|item| item.id == id)
+    }
+
+    pub fn goal_by_id(&self, id: &str) -> Option<&GoalDef> {
+        self.goals.iter().find(|item| item.id == id)
+    }
+
+    pub fn text(&self, key: &str) -> &str {
+        self.ui_text.get(key)
+    }
+
+    pub fn text_format(&self, key: &str, replacements: &[(&str, String)]) -> String {
+        self.ui_text.format(key, replacements)
     }
 }

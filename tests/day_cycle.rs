@@ -19,7 +19,7 @@ fn next_day_resets_the_ledger() {
     cycle.stats.cash_earned = 120;
     cycle.record_combo(7);
     cycle.update(20_000.0, 10_000.0);
-    cycle.start_next_day();
+    cycle.start_next_day("steady-service".to_string());
     assert_eq!(cycle.day, 2);
     assert_eq!(cycle.stats.cash_earned, 0);
     assert_eq!(cycle.stats.best_combo, 0);

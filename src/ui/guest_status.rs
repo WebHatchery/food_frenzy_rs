@@ -150,7 +150,7 @@ fn draw_fattening_pips(pos: Vec2, customer: &Customer, data: &GameData) {
 
     if ready {
         let pulse = ((macroquad::time::get_time() * 4.0).sin() * 0.5 + 0.5) as f32;
-        let label = "PLUMP & READY";
+        let label = data.text("ui_plump_ready");
         let dim = measure_ui_text(label, None, 13, 1.0);
         let rect = Rect::new(
             pos.x - dim.width * 0.5 - 8.0,
@@ -198,44 +198,72 @@ pub(super) fn draw_guest_hover_panel(
 
     let customer_type = data.customer_type_by_id(&customer.customer_type);
     let type_line = customer_type
-        .map(|item| format!("{} (Tier {})", item.name, item.profile_tier.max(1)))
-        .unwrap_or_else(|| "Guest".to_string());
+        .map(|item| {
+            data.text_format(
+                "ui_tier_name",
+                [
+                    ("name", item.name.clone()),
+                    ("tier", item.profile_tier.max(1).to_string()),
+                ]
+                .as_slice(),
+            )
+        })
+        .unwrap_or_else(|| data.text("ui_guest_type_unknown").to_string());
     let needed = visits_until_ready_for(data, &customer.customer_type);
     let fattening_line = if customer.times_fed >= needed {
-        "Plump and ready for the Lounge".to_string()
+        data.text("ui_plump_ready_sentence").to_string()
     } else {
-        format!(
-            "Fattening: {}/{} visits ({} more to Lounge)",
-            customer.times_fed,
-            needed,
-            needed - customer.times_fed
+        data.text_format(
+            "ui_fattening",
+            [
+                ("fed", customer.times_fed.to_string()),
+                ("needed", needed.to_string()),
+                ("remaining", (needed - customer.times_fed).to_string()),
+            ]
+            .as_slice(),
         )
     };
     let patience = patience_remaining_ratio(customer, data, progression, now_ms);
     let mut lines = vec![
         format!("{} - {}", customer.display_name, type_line),
-        format!(
-            "Satisfaction: {:.0}/{:.0}",
-            customer.total_satisfaction,
-            customer.max_satisfaction.total()
+        data.text_format(
+            "ui_satisfaction",
+            [
+                ("current", format!("{:.0}", customer.total_satisfaction)),
+                ("max", format!("{:.0}", customer.max_satisfaction.total())),
+            ]
+            .as_slice(),
         ),
-        format!("Patience: {:.0}%", patience * 100.0),
+        data.text_format(
+            "ui_patience",
+            [("percent", format!("{:.0}", patience * 100.0))].as_slice(),
+        ),
         fattening_line,
-        format!("Tab so far: ${}", customer.bill.max(0)),
+        data.text_format(
+            "ui_tab",
+            [("cash", customer.bill.max(0).to_string())].as_slice(),
+        ),
     ];
     if !customer.order_complete() && customer.courses_served() > 0 {
         lines.push(if customer.eating_ms > 0.0 {
-            format!(
-                "Eating ({:.0}s) - hold the next course",
-                customer.eating_ms / 1000.0
+            data.text_format(
+                "ui_eating_course",
+                [("seconds", format!("{:.0}", customer.eating_ms / 1000.0))].as_slice(),
             )
         } else if customer.waiting_ms <= data.balance.course_wait_grace_ms {
-            format!(
-                "Ready for the next course ({:.0}s window)",
-                (data.balance.course_wait_grace_ms - customer.waiting_ms) / 1000.0
+            data.text_format(
+                "ui_next_course",
+                [(
+                    "seconds",
+                    format!(
+                        "{:.0}",
+                        (data.balance.course_wait_grace_ms - customer.waiting_ms) / 1000.0
+                    ),
+                )]
+                .as_slice(),
             )
         } else {
-            "Kept waiting - losing appetite!".to_string()
+            data.text("ui_waiting_course").to_string()
         });
     }
 

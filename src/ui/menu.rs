@@ -2,11 +2,12 @@
 
 use super::common::{draw_menu_button, BACKGROUND, MUTED, PANEL, TEXT};
 use super::types::{SettingsActions, TitleActions};
+use crate::data::GameData;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::draw_text_centered_in_box;
 use macroquad_toolkit::ui::draw_ui_text;
 
-fn draw_title_background(title_texture: Option<&Texture2D>) {
+fn draw_title_background(title_texture: Option<&Texture2D>, data: &GameData) {
     let width = screen_width();
     let height = screen_height();
     clear_background(Color::new(0.02, 0.018, 0.016, 1.0));
@@ -28,7 +29,15 @@ fn draw_title_background(title_texture: Option<&Texture2D>) {
         );
         draw_rectangle(0.0, 0.0, width, height, Color::new(0.0, 0.0, 0.0, 0.10));
     } else {
-        draw_text_centered_in_box("Feast Frenzy", 0.0, height * 0.22, width, 120.0, 72.0, TEXT);
+        draw_text_centered_in_box(
+            data.text("title_name"),
+            0.0,
+            height * 0.22,
+            width,
+            120.0,
+            72.0,
+            TEXT,
+        );
     }
 
     let band_h = 170.0_f32.min(height * 0.28);
@@ -85,17 +94,21 @@ fn title_button_layout(width: f32, height: f32) -> TitleActions {
     }
 }
 
-pub fn draw_title_screen(title_texture: Option<&Texture2D>, status_message: &str) -> TitleActions {
+pub fn draw_title_screen(
+    title_texture: Option<&Texture2D>,
+    status_message: &str,
+    data: &GameData,
+) -> TitleActions {
     let width = screen_width();
     let height = screen_height();
-    draw_title_background(title_texture);
+    draw_title_background(title_texture, data);
 
     let actions = title_button_layout(width, height);
 
     // The house's public promise: warm and welcoming on first read, and only
     // later — once the player learns what the Lounge is for — quietly sinister.
     draw_text_centered_in_box(
-        "Where every guest leaves fuller than they arrived.",
+        data.text("title_promise"),
         24.0,
         actions.new_game.y - 76.0,
         width - 48.0,
@@ -116,15 +129,15 @@ pub fn draw_title_screen(title_texture: Option<&Texture2D>, status_message: &str
         );
     }
 
-    draw_menu_button(actions.new_game, "New Game");
-    draw_menu_button(actions.load_game, "Load Game");
-    draw_menu_button(actions.settings, "Settings");
-    draw_menu_button(actions.exit, "Exit");
+    draw_menu_button(actions.new_game, data.text("menu_new_game"));
+    draw_menu_button(actions.load_game, data.text("menu_load_game"));
+    draw_menu_button(actions.settings, data.text("menu_settings"));
+    draw_menu_button(actions.exit, data.text("menu_exit"));
 
     actions
 }
 
-fn draw_toggle(rect: Rect, enabled: bool) {
+fn draw_toggle(rect: Rect, enabled: bool, data: &GameData) {
     let bg = if enabled {
         Color::new(0.25, 0.58, 0.39, 1.0)
     } else {
@@ -149,7 +162,11 @@ fn draw_toggle(rect: Rect, enabled: bool) {
     );
 
     draw_text_centered_in_box(
-        if enabled { "On" } else { "Off" },
+        if enabled {
+            data.text("toggle_on")
+        } else {
+            data.text("toggle_off")
+        },
         rect.x,
         rect.y,
         rect.w,
@@ -159,14 +176,18 @@ fn draw_toggle(rect: Rect, enabled: bool) {
     );
 }
 
-pub fn draw_settings_screen(fullscreen_enabled: bool, sound_enabled: bool) -> SettingsActions {
+pub fn draw_settings_screen(
+    fullscreen_enabled: bool,
+    sound_enabled: bool,
+    data: &GameData,
+) -> SettingsActions {
     let width = screen_width();
     let height = screen_height();
     clear_background(BACKGROUND);
 
     draw_rectangle(0.0, 0.0, width, 96.0, Color::new(0.075, 0.065, 0.06, 1.0));
     draw_rectangle(0.0, 95.0, width, 1.0, Color::new(0.80, 0.50, 0.25, 0.55));
-    draw_ui_text("Settings", 32.0, 60.0, 36.0, TEXT);
+    draw_ui_text(data.text("menu_settings"), 32.0, 60.0, 36.0, TEXT);
 
     let content_w = width.min(720.0);
     let content_x = (width - content_w) * 0.5;
@@ -175,14 +196,20 @@ pub fn draw_settings_screen(fullscreen_enabled: bool, sound_enabled: bool) -> Se
 
     let row = Rect::new(content_x + 24.0, height * 0.32, content_w - 48.0, 78.0);
     macroquad_toolkit::ui::draw_surface(row, &row_surface);
-    draw_ui_text("Fullscreen", row.x + 24.0, row.y + 48.0, 24.0, TEXT);
+    draw_ui_text(
+        data.text("settings_fullscreen"),
+        row.x + 24.0,
+        row.y + 48.0,
+        24.0,
+        TEXT,
+    );
     let toggle = Rect::new(row.x + row.w - 142.0, row.y + 16.0, 112.0, 46.0);
-    draw_toggle(toggle, fullscreen_enabled);
+    draw_toggle(toggle, fullscreen_enabled, data);
 
     let sound_row = Rect::new(row.x, row.y + row.h + 16.0, row.w, 78.0);
     macroquad_toolkit::ui::draw_surface(sound_row, &row_surface);
     draw_ui_text(
-        "Sound Effects",
+        data.text("settings_sound"),
         sound_row.x + 24.0,
         sound_row.y + 48.0,
         24.0,
@@ -194,10 +221,10 @@ pub fn draw_settings_screen(fullscreen_enabled: bool, sound_enabled: bool) -> Se
         112.0,
         46.0,
     );
-    draw_toggle(sound_toggle, sound_enabled);
+    draw_toggle(sound_toggle, sound_enabled, data);
 
     let back = Rect::new(content_x + 24.0, height - 112.0, 180.0, 54.0);
-    draw_menu_button(back, "Back");
+    draw_menu_button(back, data.text("menu_back"));
 
     SettingsActions {
         fullscreen_toggle: row,

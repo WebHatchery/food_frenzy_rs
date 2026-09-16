@@ -59,9 +59,9 @@ fn update_day_cycle(
     {
         progression.record_day_completed();
         game_state.queue_sfx(crate::state::SfxCue::DayEnd);
-        game_state.add_message(format!(
-            "Day {} ends. The doors close for the night.",
-            game_state.day_cycle.day
+        game_state.add_message(data.text_format(
+            "message_day_end",
+            [("day", game_state.day_cycle.day.to_string())].as_slice(),
         ));
     }
 }
@@ -129,10 +129,16 @@ fn update_cooking(dt_ms: f32, data: &GameData, game_state: &mut GameState) {
                     .dishes
                     .push(crate::state::PlatedDish::new(cooked_name.clone()));
                 plated = true;
-                messages.push(format!(
-                    "{} ready: {cooked_name}",
-                    dish_display_name(data, &station.color)
-                ));
+                messages.push(
+                    data.text_format(
+                        "message_dish_ready",
+                        [
+                            ("dish", dish_display_name(data, &station.color)),
+                            ("cooked", cooked_name),
+                        ]
+                        .as_slice(),
+                    ),
+                );
             }
         } else {
             station.remaining_ms -= dt_ms;
@@ -144,12 +150,16 @@ fn update_cooking(dt_ms: f32, data: &GameData, game_state: &mut GameState) {
     }
     if spoiled > 0 {
         game_state.floaters.spawn(
-            format!("{spoiled} dish(es) spoiled on the pass"),
+            data.text_format(
+                "message_spoiled_floater",
+                [("count", spoiled.to_string())].as_slice(),
+            ),
             crate::state::FloaterKind::Alert,
             crate::state::FloaterAnchor::Header,
         );
-        game_state.add_message(format!(
-            "{spoiled} dish(es) sat too long and were thrown out."
+        game_state.add_message(data.text_format(
+            "message_spoiled",
+            [("count", spoiled.to_string())].as_slice(),
         ));
     }
     for message in messages {

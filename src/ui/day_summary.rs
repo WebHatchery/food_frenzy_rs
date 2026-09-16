@@ -2,22 +2,16 @@
 //! numbers are tallied, with the nearest goal shown so the next day has a
 //! purpose. "Open the doors" starts the next day.
 
-use super::common::{can_afford_cost, format_unlock_cost, GOLD, LINE, MUTED, SUCCESS, TEXT};
+use super::common::{GOLD, LINE, MUTED, SUCCESS, TEXT};
 use super::types::UiActions;
 use crate::data::GameData;
-use crate::engine::prestige_requirement;
-use crate::state::{GameState, ProgressionState};
+use crate::state::GameState;
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{draw_text_centered_in_box, draw_ui_text, measure_ui_text};
 
 const MEAT_PINK: Color = Color::new(0.93, 0.52, 0.60, 1.0);
 
-pub(super) fn draw_day_summary(
-    game: &GameState,
-    progression: &ProgressionState,
-    data: &GameData,
-    ui: &mut UiActions,
-) {
+pub(super) fn draw_day_summary(game: &GameState, data: &GameData, ui: &mut UiActions) {
     if !game.day_cycle.summary_pending {
         return;
     }
@@ -50,7 +44,10 @@ pub(super) fn draw_day_summary(
     );
     draw_rectangle_lines(panel.x, panel.y, panel.w, panel.h, 2.0, GOLD);
 
-    let title = format!("DAY {} - CLOSING LEDGER", game.day_cycle.day);
+    let title = data.text_format(
+        "summary_title",
+        [("day", game.day_cycle.day.to_string())].as_slice(),
+    );
     let title_dim = measure_ui_text(&title, None, 24, 1.0);
     draw_ui_text(
         &title,
@@ -70,11 +67,23 @@ pub(super) fn draw_day_summary(
 
     let stats = &game.day_cycle.stats;
     let rows: [(&str, String, Color); 8] = [
-        ("Cash taken", format!("${}", stats.cash_earned), SUCCESS),
-        ("Renown earned", stats.renown_earned.to_string(), TEXT),
-        ("Guests served", stats.guests_served.to_string(), TEXT),
         (
-            "Guests lost",
+            data.text("summary_cash"),
+            format!("${}", stats.cash_earned),
+            SUCCESS,
+        ),
+        (
+            data.text("summary_renown"),
+            stats.renown_earned.to_string(),
+            TEXT,
+        ),
+        (
+            data.text("summary_served"),
+            stats.guests_served.to_string(),
+            TEXT,
+        ),
+        (
+            data.text("summary_lost"),
             stats.guests_lost.to_string(),
             if stats.guests_lost > 0 {
                 Color::new(0.94, 0.42, 0.36, 1.0)
@@ -83,13 +92,25 @@ pub(super) fn draw_day_summary(
             },
         ),
         (
-            "Sent to the Lounge",
+            data.text("summary_lounge"),
             stats.guests_processed.to_string(),
             MEAT_PINK,
         ),
-        ("Meat stocked", stats.meat_gained.to_string(), MEAT_PINK),
-        ("Fresh dishes", stats.fresh_dishes.to_string(), TEXT),
-        ("Best combo", format!("x{}", stats.best_combo), TEXT),
+        (
+            data.text("summary_meat"),
+            stats.meat_gained.to_string(),
+            MEAT_PINK,
+        ),
+        (
+            data.text("summary_fresh"),
+            stats.fresh_dishes.to_string(),
+            TEXT,
+        ),
+        (
+            data.text("summary_combo"),
+            format!("x{}", stats.best_combo),
+            TEXT,
+        ),
     ];
     let compact = panel_h < 450.0;
     let mut y = panel.y + 88.0;
@@ -127,9 +148,12 @@ pub(super) fn draw_day_summary(
 
     draw_line(panel.x + 24.0, y, panel.x + panel.w - 24.0, y, 1.0, LINE);
     y += 26.0;
-    draw_ui_text("Tomorrow's goal", panel.x + 36.0, y, 15.0, GOLD);
+    draw_ui_text(data.text("summary_goal"), panel.x + 36.0, y, 15.0, GOLD);
     y += 22.0;
-    let goal = nearest_goal(game, progression, data);
+    let goal = data
+        .goal_by_id(&game.day_cycle.goal_id)
+        .map(|goal| format!("{}: {}", goal.title, goal.description))
+        .unwrap_or_else(|| data.text("message_goal_prestige_ready").to_string());
     for line in goal.lines() {
         draw_ui_text(line, panel.x + 36.0, y, 14.0, TEXT);
         y += 20.0;
@@ -162,7 +186,10 @@ pub(super) fn draw_day_summary(
         GOLD,
     );
     draw_text_centered_in_box(
-        &format!("Open Day {}", game.day_cycle.day + 1),
+        &data.text_format(
+            "ui_open_day",
+            [("day", (game.day_cycle.day + 1).to_string())].as_slice(),
+        ),
         open_rect.x,
         open_rect.y,
         open_rect.w,
@@ -171,35 +198,4 @@ pub(super) fn draw_day_summary(
         TEXT,
     );
     ui.day_next_button = Some(open_rect);
-}
-
-/// The nearest thing worth chasing, so every ledger ends with a pull forward.
-fn nearest_goal(game: &GameState, progression: &ProgressionState, data: &GameData) -> String {
-    // 1. An affordable clientele unlock beats everything.
-    let mut locked: Vec<_> = data
-        .customer_types
-        .iter()
-        .filter(|customer_type| !progression.is_customer_unlocked(&customer_type.id))
-        .collect();
-    locked.sort_by_key(|customer_type| customer_type.profile_tier);
-    if let Some(next) = locked.first() {
-        let cost = format_unlock_cost(&next.unlock_cost);
-        if can_afford_cost(game, &next.unlock_cost) {
-            return format!(
-                "The larder can already attract {} - open the ladder and do it.",
-                next.name
-            );
-        }
-        return format!("Attract {} ({}).", next.name, cost);
-    }
-    // 2. Otherwise, the prestige wall.
-    let requirement = prestige_requirement(data, progression);
-    if progression.total_score < requirement {
-        return format!(
-            "Prestige at {} renown ({} to go).",
-            requirement,
-            requirement - progression.total_score
-        );
-    }
-    "Prestige is ready - cash in whenever it suits the house.".to_string()
 }

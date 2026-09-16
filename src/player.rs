@@ -33,7 +33,7 @@ pub fn start_station_with_player(
     game_state: &mut GameState,
 ) -> bool {
     if game_state.player.action_lock_ms > 0.0 {
-        game_state.add_message("Chef is finishing the cooking start.".to_string());
+        game_state.add_message(data.text("message_cooking_lock"));
         return false;
     }
 
@@ -44,11 +44,17 @@ pub fn start_station_with_player(
         } else {
             selected_station.clone()
         };
-        send_player_to_station(station_color, "Cooking", carried_station, false, game_state);
+        send_player_to_station(
+            station_color,
+            data.text("task_cooking"),
+            carried_station,
+            false,
+            game_state,
+        );
         game_state.player.lock_on_arrival_ms = data.balance.player_cooking_start_lock_ms;
-        game_state.add_message(format!(
-            "Started cooking {}.",
-            dish_display_name(data, station_color)
+        game_state.add_message(data.text_format(
+            "message_started_cooking",
+            [("dish", dish_display_name(data, station_color))].as_slice(),
         ));
     }
     started
@@ -61,18 +67,18 @@ pub fn select_station_with_player(
     game_state: &mut GameState,
 ) {
     if game_state.player.action_lock_ms > 0.0 {
-        game_state.add_message("Chef is finishing the cooking start.".to_string());
+        game_state.add_message(data.text("message_cooking_lock"));
         return;
     }
 
     if selected_station.as_deref() == Some(station_color.as_str()) {
         *selected_station = None;
-        clear_player_carry(game_state);
+        clear_player_carry(data, game_state);
     } else {
         *selected_station = Some(station_color.clone());
         send_player_to_station(
             &station_color,
-            "Carrying",
+            data.text("task_carrying"),
             Some(station_color.clone()),
             false,
             game_state,
@@ -94,27 +100,34 @@ pub fn player_target_for_customer(customer_id: u32, game_state: &GameState) -> O
         })
 }
 
-pub fn send_player_to_customer(customer_id: u32, station_color: &str, game_state: &mut GameState) {
+pub fn send_player_to_customer(
+    customer_id: u32,
+    station_color: &str,
+    data: &GameData,
+    game_state: &mut GameState,
+) {
     if let Some((x, y)) = player_target_for_customer(customer_id, game_state) {
         set_player_target(
             game_state,
             x,
             y,
-            "Serving",
+            data.text("task_serving"),
             Some(station_color.to_string()),
             true,
         );
     }
 }
 
-pub fn clear_player_carry(game_state: &mut GameState) {
+pub fn clear_player_carry(data: &GameData, game_state: &mut GameState) {
     let (x, y) = kitchen_pass_position();
     game_state.player.target_x = x;
     game_state.player.target_y = y;
     game_state.player.carried_station = None;
     game_state.player.clear_carry_on_arrival = false;
-    if game_state.player.task_label == "Carrying" || game_state.player.task_label == "Serving" {
-        game_state.player.task_label = "Prep".to_string();
+    if game_state.player.task_label == data.text("task_carrying")
+        || game_state.player.task_label == data.text("task_serving")
+    {
+        game_state.player.task_label = data.text("task_prep").to_string();
     }
 }
 
@@ -142,7 +155,12 @@ pub fn handle_player_keyboard_movement(dt_ms: f32, data: &GameData, game_state: 
     player.lock_on_arrival_ms = 0.0;
     player.clear_carry_on_arrival = false;
     if player.carried_station.is_none() {
-        player.task_label = if next.x < 0.0 { "Prep" } else { "Floor" }.to_string();
+        player.task_label = if next.x < 0.0 {
+            data.text("task_prep")
+        } else {
+            data.text("task_floor")
+        }
+        .to_string();
     }
 }
 
@@ -151,8 +169,13 @@ pub fn update_player_movement(dt_ms: f32, data: &GameData, game_state: &mut Game
     let player = &mut game_state.player;
     if player.action_lock_ms > 0.0 {
         player.action_lock_ms = (player.action_lock_ms - dt_ms).max(0.0);
-        if player.action_lock_ms <= 0.0 && player.task_label == "Cooking" {
-            player.task_label = if player.x < 0.0 { "Prep" } else { "Floor" }.to_string();
+        if player.action_lock_ms <= 0.0 && player.task_label == data.text("task_cooking") {
+            player.task_label = if player.x < 0.0 {
+                data.text("task_prep")
+            } else {
+                data.text("task_floor")
+            }
+            .to_string();
         }
         return;
     }
@@ -166,13 +189,13 @@ pub fn update_player_movement(dt_ms: f32, data: &GameData, game_state: &mut Game
         if player.lock_on_arrival_ms > 0.0 {
             player.action_lock_ms = player.lock_on_arrival_ms;
             player.lock_on_arrival_ms = 0.0;
-            player.task_label = "Cooking".to_string();
+            player.task_label = data.text("task_cooking").to_string();
             return;
         }
         if player.clear_carry_on_arrival {
             player.carried_station = None;
             player.clear_carry_on_arrival = false;
-            player.task_label = "Floor".to_string();
+            player.task_label = data.text("task_floor").to_string();
         }
     } else if distance > 0.0 {
         let step = travel / distance;
@@ -231,7 +254,7 @@ pub fn interact_with_nearest_customer(
         return false;
     }
 
-    let Some(customer_id) = nearest_servable_customer(game_state, &station_color) else {
+    let Some(customer_id) = nearest_servable_customer(data, game_state, &station_color) else {
         return false;
     };
     if serve_customer(
@@ -242,7 +265,7 @@ pub fn interact_with_nearest_customer(
         progression,
         guest_state,
     ) {
-        send_player_to_customer(customer_id, &station_color, game_state);
+        send_player_to_customer(customer_id, &station_color, data, game_state);
         *selected_station = None;
         true
     } else {
@@ -323,7 +346,11 @@ fn nearest_player_station(game_state: &GameState) -> Option<&'static str> {
         .map(|(color, _)| color)
 }
 
-fn nearest_servable_customer(game_state: &GameState, station_color: &str) -> Option<u32> {
+fn nearest_servable_customer(
+    data: &GameData,
+    game_state: &GameState,
+    station_color: &str,
+) -> Option<u32> {
     if game_state.player.x < 0.0 {
         return None;
     }
@@ -336,7 +363,7 @@ fn nearest_servable_customer(game_state: &GameState, station_color: &str) -> Opt
             let dx = game_state.player.x - customer.floor_x;
             let dy = game_state.player.y - customer.floor_y;
             let distance = (dx * dx + dy * dy).sqrt();
-            (distance <= 118.0).then_some((customer.id, distance))
+            (distance <= data.balance.player_interaction_range).then_some((customer.id, distance))
         })
         .min_by(|left, right| {
             left.1

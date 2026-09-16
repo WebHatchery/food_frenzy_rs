@@ -55,44 +55,44 @@ fn draw_top_header(data: &GameData, game: &GameState, progression: &ProgressionS
     // the original playtest, so every number says what it is for.
     let tiles = [
         (
-            "Cash",
+            data.text("label_cash"),
             format!("${}", progression.currency),
             Color::new(0.52, 0.84, 0.46, 1.0),
-            "Cash: paid on guest tabs. Spend on upgrades.",
+            data.text("tip_cash"),
         ),
         (
-            "Renown",
+            data.text("label_renown"),
             game.score.to_string(),
             Color::new(0.44, 0.66, 0.96, 1.0),
-            "Renown: reputation from service. Fills the Prestige bar below.",
+            data.text("tip_renown"),
         ),
         (
-            "Larder",
+            data.text("label_larder"),
             meat_total.to_string(),
             Color::new(0.93, 0.52, 0.60, 1.0),
-            "Meat from the Lounge. Attracts richer clientele; crafts recipes.",
+            data.text("tip_larder"),
         ),
         (
-            "Guests",
+            data.text("label_guests"),
             format!(
                 "{}/{}",
                 game.customers.len(),
                 max_customer_count(data, progression)
             ),
             Color::new(0.90, 0.70, 0.40, 1.0),
-            "Seats filled / tables open. Upgrades add tables.",
+            data.text("tip_guests"),
         ),
         (
-            "Lounge",
+            data.text("label_lounge"),
             vip,
             Color::new(0.74, 0.52, 0.92, 1.0),
-            "The Last Meal Lounge. Invite plump guests for their final course.",
+            data.text("tip_lounge"),
         ),
         (
-            "Prestige",
+            data.text("label_prestige"),
             progression.prestige_level.to_string(),
             Color::new(0.82, 0.45, 0.88, 1.0),
-            "Reset for a permanent renown bonus once the bar fills.",
+            data.text("tip_prestige"),
         ),
     ];
     let gap = 8.0;
@@ -194,7 +194,7 @@ pub fn draw_and_collect_hitboxes(
         &mut ui,
     );
     draw_growth_panel(right, game, progression, data, &mut ui);
-    draw_event_feed(feed, game);
+    draw_event_feed(feed, game, data);
     draw_floaters(floor, game);
     draw_tutorial_panel(floor, game, data, &mut ui);
     // Full-screen overlays, back to front; the processing sequence owns the
@@ -202,8 +202,8 @@ pub fn draw_and_collect_hitboxes(
     draw_clientele_board(game, progression, data, &mut ui);
     draw_specialization_modal(game, progression, data, &mut ui);
     draw_prestige_modal(game, data, &mut ui);
-    draw_day_summary(game, progression, data, &mut ui);
-    draw_processing_overlay(game);
+    draw_day_summary(game, data, &mut ui);
+    draw_processing_overlay(game, data);
 
     ui
 }

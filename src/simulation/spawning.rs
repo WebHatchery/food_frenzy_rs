@@ -85,7 +85,7 @@ fn try_spawn_customer(
     } else {
         let guest_name = macroquad_toolkit::rng::choose(&data.regulars.names)
             .cloned()
-            .unwrap_or_else(|| "Guest".to_string());
+            .unwrap_or_else(|| data.text("message_guest_unknown").to_string());
         let personality = macroquad_toolkit::rng::choose(&data.regulars.personalities)
             .map(|personality| personality.id.clone());
         guest_state.create_guest(&guest_name, &customer_type.id, personality)
@@ -137,31 +137,49 @@ fn try_spawn_customer(
         .and_then(|personality| data.personality_by_id(personality))
         .map(|personality| personality.arrival.clone());
     let regular_prefix = if times_fed >= data.balance.regular_visits_threshold {
-        "Your regular "
+        data.text("message_guest_regular_prefix")
     } else {
         ""
     };
     if times_fed >= crate::engine::visits_until_ready_for(data, &customer_type.id) {
-        game_state.add_message(format!(
-            "{regular_prefix}{} waddles back in, plump and ready. The Lounge awaits.",
-            guest_record.name
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_guest_ready",
+                [
+                    ("prefix", regular_prefix.to_string()),
+                    ("name", guest_record.name.clone()),
+                ]
+                .as_slice(),
+            ),
+        );
     } else if times_fed == 0 {
         let flavor = arrival_line
             .map(|line| format!(" {} {line}.", guest_record.name))
             .unwrap_or_default();
-        game_state.add_message(format!(
-            "Welcome in, {}! Table {}.{flavor}",
-            guest_record.name,
-            table_index + 1
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_guest_welcome",
+                [
+                    ("name", guest_record.name.clone()),
+                    ("table", (table_index + 1).to_string()),
+                    ("flavor", flavor),
+                ]
+                .as_slice(),
+            ),
+        );
     } else {
-        game_state.add_message(format!(
-            "{regular_prefix}{} is back! Table {} (visit {}).",
-            guest_record.name,
-            table_index + 1,
-            times_fed + 1
-        ));
+        game_state.add_message(
+            data.text_format(
+                "message_guest_return",
+                [
+                    ("prefix", regular_prefix.to_string()),
+                    ("name", guest_record.name.clone()),
+                    ("table", (table_index + 1).to_string()),
+                    ("visit", (times_fed + 1).to_string()),
+                ]
+                .as_slice(),
+            ),
+        );
     }
 
     true

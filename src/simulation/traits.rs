@@ -81,7 +81,10 @@ fn tick_customer_traits(
     });
     if let Some(behavior) = data.trait_behavior(trait_key) {
         let name = game_state.customers[index].display_name.clone();
-        game_state.add_message(format!("{name} is {}", behavior.telegraph));
+        game_state.add_message(data.text_format(
+            "message_trait_telegraph",
+            [("name", name), ("telegraph", behavior.telegraph.clone())].as_slice(),
+        ));
     }
     surface_first_encounter_hint(trait_key, index, data, game_state, progression);
 }
@@ -104,12 +107,24 @@ fn surface_first_encounter_hint(
         (customer.floor_x, customer.floor_y)
     };
     game_state.floaters.spawn_at(
-        format!("New trait: {}", behavior.name),
+        data.text_format(
+            "message_trait_new",
+            [("trait", behavior.name.clone())].as_slice(),
+        ),
         FloaterKind::Alert,
         x,
         y,
     );
-    game_state.add_message(format!("{}: {}", behavior.name, behavior.hint));
+    game_state.add_message(
+        data.text_format(
+            "message_trait_hint",
+            [
+                ("trait", behavior.name.clone()),
+                ("hint", behavior.hint.clone()),
+            ]
+            .as_slice(),
+        ),
+    );
 }
 
 /// Count down armed warnings every frame and resolve the ones whose window
@@ -155,15 +170,27 @@ fn resolve_alert(
         "can_steal_food" => {
             // Counterplay: their order got finished, or the pass was cleared.
             if game_state.customers[index].order_complete() || !any_plated_dish(game_state) {
-                game_state.add_message(format!("{name} found nothing to swipe."));
+                game_state.add_message(
+                    data.text_format("message_trait_nothing", [("name", name.clone())].as_slice()),
+                );
                 return;
             }
             if let Some((station_color, dish_name)) = steal_dish(game_state) {
                 let station_name = dish_display_name(data, &station_color);
                 game_state
                     .floaters
-                    .spawn_at("stole a dish!", FloaterKind::Alert, x, y);
-                game_state.add_message(format!("{name} stole {dish_name} from {station_name}!"));
+                    .spawn_at(data.text("ui_stole_dish"), FloaterKind::Alert, x, y);
+                game_state.add_message(
+                    data.text_format(
+                        "message_trait_stole",
+                        [
+                            ("name", name),
+                            ("dish", dish_name),
+                            ("station", station_name),
+                        ]
+                        .as_slice(),
+                    ),
+                );
             }
         }
         "throws_food" => {
@@ -171,7 +198,9 @@ fn resolve_alert(
             if game_state.customers[index].total_satisfaction
                 >= data.balance.monkey_cranky_threshold
             {
-                game_state.add_message(format!("{name} settled down, belly full."));
+                game_state.add_message(
+                    data.text_format("message_trait_settled", [("name", name.clone())].as_slice()),
+                );
                 return;
             }
             if let Some((station_color, dish_name)) = steal_dish(game_state) {
@@ -180,16 +209,28 @@ fn resolve_alert(
                 game_state
                     .floaters
                     .spawn_at("tantrum! combo lost", FloaterKind::Alert, x, y);
-                game_state.add_message(format!("{name} threw {dish_name} from {station_name}!"));
+                game_state.add_message(
+                    data.text_format(
+                        "message_trait_threw",
+                        [
+                            ("name", name),
+                            ("dish", dish_name),
+                            ("station", station_name),
+                        ]
+                        .as_slice(),
+                    ),
+                );
             }
         }
         "can_wander" => {
             // Counterplay: any course served during the window settles them.
             if game_state.customers[index].courses_served() > alert.courses_served_at_arm {
-                game_state.add_message(format!("{name} settled in after that course."));
+                game_state.add_message(
+                    data.text_format("message_trait_course_settled", [("name", name)].as_slice()),
+                );
                 return;
             }
-            move_customer_to_empty_table(index, game_state, max_tables);
+            move_customer_to_empty_table(index, data, game_state, max_tables);
         }
         _ => {}
     }
@@ -202,7 +243,12 @@ fn any_plated_dish(game_state: &GameState) -> bool {
         .any(|station| !station.dishes.is_empty())
 }
 
-fn move_customer_to_empty_table(index: usize, game_state: &mut GameState, max_tables: usize) {
+fn move_customer_to_empty_table(
+    index: usize,
+    data: &GameData,
+    game_state: &mut GameState,
+    max_tables: usize,
+) {
     let occupied = occupied_tables(game_state, max_tables);
     let empty_tables: Vec<usize> = (0..max_tables)
         .filter(|table| !occupied.contains(table))
@@ -217,7 +263,10 @@ fn move_customer_to_empty_table(index: usize, game_state: &mut GameState, max_ta
         customer.is_seated = false;
         customer.display_name.clone()
     };
-    game_state.add_message(format!("{display_name} moved to table {}", next + 1));
+    game_state.add_message(data.text_format(
+        "message_trait_wandered",
+        [("name", display_name), ("table", (next + 1).to_string())].as_slice(),
+    ));
 }
 
 fn occupied_tables(game_state: &GameState, max_tables: usize) -> HashSet<usize> {

@@ -9,14 +9,6 @@ use macroquad::prelude::*;
 use macroquad_toolkit::colors::with_alpha;
 use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
-/// Fallback table-talk for guests without a personality archetype.
-const GENERIC_CHATTER: [&str; 4] = [
-    "Smells wonderful in here.",
-    "The usual table, please!",
-    "(contented humming)",
-    "One of everything, eventually.",
-];
-
 const CHATTER_CYCLE_S: f64 = 19.0;
 const CHATTER_SHOW_S: f64 = 3.8;
 
@@ -90,7 +82,9 @@ fn chatter_line<'data>(
         .filter(|lines| !lines.is_empty());
     match personality_lines {
         Some(lines) => Some(lines[(customer.id as usize + cycle_index) % lines.len()].as_str()),
-        None => Some(GENERIC_CHATTER[(customer.id as usize + cycle_index) % GENERIC_CHATTER.len()]),
+        None => data
+            .ui_text
+            .fallback_chatter_line(customer.id as usize + cycle_index),
     }
 }
 
