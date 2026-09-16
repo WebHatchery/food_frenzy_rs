@@ -280,7 +280,7 @@ pub(super) fn draw_dining_room(
         );
     }
 
-    super::ambience::draw_ambient_chatter(floor, game, data);
+    super::ambience::draw_ambient_chatter(floor, game, data, now_ms);
     draw_combo_meter(floor, game, progression, data);
     draw_day_clock(floor, game, data);
     draw_event_banner(floor, game, data);

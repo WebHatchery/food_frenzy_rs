@@ -4,7 +4,7 @@
 use crate::data::GameData;
 use crate::engine::{
     chance, max_customer_count, max_satisfaction_for_customer, restaurant_entrance_position,
-    restaurant_table_position, spawn_interval_ms, RETURNING_GUEST_CHANCE,
+    restaurant_table_position, spawn_interval_ms,
 };
 use crate::state::{Customer, GameState, GuestState, ProgressionState, Satisfaction, Timers};
 
@@ -30,7 +30,8 @@ pub(super) fn update_spawn(
     if let Some(crate::data::EventEffect::SpawnRush { multiplier }) =
         game_state.active_event_effect(data)
     {
-        interval = (interval * f64::from(*multiplier)).max(1_500.0);
+        interval = (interval * f64::from(*multiplier))
+            .max(f64::from(data.balance.min_customer_spawn_interval));
     }
     if now_ms >= timers.next_spawn_ms {
         let _ = try_spawn_customer(data, game_state, progression, guest_state, now_ms);
@@ -55,7 +56,7 @@ fn try_spawn_customer(
         .iter()
         .map(|customer| customer.guest_id.clone())
         .collect();
-    let returning = if chance(RETURNING_GUEST_CHANCE) {
+    let returning = if chance(data.balance.returning_guest_chance) {
         guest_state
             .get_returning_unlocked_guest(&progression.unlocked_customer_types, &active_guest_ids)
     } else {

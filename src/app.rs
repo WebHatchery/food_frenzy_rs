@@ -53,14 +53,13 @@ pub async fn run() {
     let mut app = App::load().await;
 
     // Screenshot harness: when feast_FRENZY_CAPTURE_PATH is set, seed a scene,
-    // simulate deterministic frames, write a PNG, and exit. App::tick() has no
-    // dt parameter (it reads get_frame_time() internally), so the capture
-    // closure ignores the fixed timestep the harness would otherwise pass.
+    // simulate deterministic frames, write a PNG, and exit. The harness clock
+    // is passed through the same tick path as normal frame time.
     if let Some(configs) = capture::CaptureConfig::all_from_env("feast_FRENZY") {
         for config in configs {
             app.begin_capture_scene(&config.scene);
-            capture::run_capture_once(&config, |_dt| {
-                app.tick();
+            capture::run_capture_once(&config, |dt_ms| {
+                app.tick(dt_ms);
             })
             .await;
         }
@@ -68,7 +67,7 @@ pub async fn run() {
     }
 
     loop {
-        app.tick();
+        app.tick(get_frame_time() * 1000.0);
         next_frame().await;
     }
 }
@@ -170,9 +169,10 @@ impl App {
                     320,
                     64,
                     (420.0, 300.0),
-                );
-                cinematic
-                    .advance(ProcessingCinematic::total_ms() - crate::state::REVEAL_MS + 400.0);
+                )
+                .with_timing(self.data.balance.cinematic.clone());
+                let reveal = self.data.balance.cinematic.reveal_ms;
+                cinematic.advance(cinematic.total_ms() - reveal + 400.0);
                 self.game_state.processing_cinematic = Some(cinematic);
             }
             _ => {
@@ -224,8 +224,7 @@ impl App {
         self.selected_station = Some("blue".to_string());
     }
 
-    fn tick(&mut self) {
-        let dt_ms = get_frame_time() * 1000.0;
+    fn tick(&mut self, dt_ms: f32) {
         match self.app_screen {
             AppScreen::Title => self.tick_title(),
             AppScreen::Settings => self.tick_settings(),
@@ -285,7 +284,7 @@ impl App {
                 &mut self.guest_state,
                 &mut self.timers,
             );
-            handle_player_keyboard_movement(dt_ms, &mut self.game_state);
+            handle_player_keyboard_movement(dt_ms, &self.data, &mut self.game_state);
         }
 
         let ui_hits = draw_and_collect_hitboxes(

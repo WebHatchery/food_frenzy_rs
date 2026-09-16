@@ -11,9 +11,7 @@ mod floaters;
 mod progression;
 mod tutorial;
 
-pub use cinematic::{
-    CinematicPhase, ProcessingCinematic, CURTAIN_MS, ESCORT_MS, QUIET_MS, REVEAL_MS,
-};
+pub use cinematic::{CinematicPhase, ProcessingCinematic};
 pub use day_cycle::{DayCycle, DayStats};
 pub use floaters::{
     FloaterAnchor, FloaterKind, Floaters, FLOATER_LIFETIME_MS, MAX_ACTIVE_FLOATERS,

@@ -7,7 +7,7 @@ mod spawning;
 mod traits;
 
 use crate::data::GameData;
-use crate::engine::{max_customer_count, restaurant_table_position, CUSTOMER_WALK_SPEED};
+use crate::engine::{max_customer_count, restaurant_table_position};
 use crate::gameplay::dish_display_name;
 use crate::player::update_player_movement;
 use crate::state::{GameState, GuestState, ProgressionState, Timers};
@@ -33,7 +33,7 @@ pub fn update_game_world(
         now_ms,
     );
     update_customer_movement(dt_ms, data, progression_state, game_state);
-    update_player_movement(dt_ms, game_state);
+    update_player_movement(dt_ms, data, game_state);
     guests::update_course_pacing(dt_ms, data, game_state);
     guests::update_departures(dt_ms, data, game_state, progression_state, guest_state);
     guests::update_patience(dt_ms, data, game_state, progression_state, timers, now_ms);
@@ -73,7 +73,7 @@ fn update_customer_movement(
     game_state: &mut GameState,
 ) {
     let max_tables = max_customer_count(data, progression);
-    let travel = CUSTOMER_WALK_SPEED * (dt_ms / 1000.0);
+    let travel = data.balance.customer_walk_speed * (dt_ms / 1000.0);
     let mut newly_seated = false;
     for customer in &mut game_state.customers {
         let (target_x, target_y) = restaurant_table_position(customer.table_index, max_tables);

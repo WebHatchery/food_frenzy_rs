@@ -2,14 +2,12 @@
 
 use crate::data::{GameData, STATION_COLORS};
 use crate::engine::{
-    kitchen_pass_position, kitchen_station_position, KITCHEN_SERVICE_LEFT, PLAYER_WALK_SPEED,
-    RESTAURANT_FLOOR_HEIGHT, RESTAURANT_FLOOR_WIDTH,
+    kitchen_pass_position, kitchen_station_position, RESTAURANT_FLOOR_HEIGHT,
+    RESTAURANT_FLOOR_WIDTH,
 };
 use crate::gameplay::{dish_display_name, serve_customer, start_cooking};
 use crate::state::{GameState, GuestState, ProgressionState};
 use macroquad::prelude::*;
-
-const PLAYER_COOKING_START_LOCK_MS: f32 = 900.0;
 
 pub fn set_player_target(
     game_state: &mut GameState,
@@ -47,7 +45,7 @@ pub fn start_station_with_player(
             selected_station.clone()
         };
         send_player_to_station(station_color, "Cooking", carried_station, false, game_state);
-        game_state.player.lock_on_arrival_ms = PLAYER_COOKING_START_LOCK_MS;
+        game_state.player.lock_on_arrival_ms = data.balance.player_cooking_start_lock_ms;
         game_state.add_message(format!(
             "Started cooking {}.",
             dish_display_name(data, station_color)
@@ -120,7 +118,7 @@ pub fn clear_player_carry(game_state: &mut GameState) {
     }
 }
 
-pub fn handle_player_keyboard_movement(dt_ms: f32, game_state: &mut GameState) {
+pub fn handle_player_keyboard_movement(dt_ms: f32, data: &GameData, game_state: &mut GameState) {
     if game_state.player.action_lock_ms > 0.0 {
         return;
     }
@@ -130,9 +128,12 @@ pub fn handle_player_keyboard_movement(dt_ms: f32, game_state: &mut GameState) {
         return;
     }
 
-    let travel = PLAYER_WALK_SPEED * (dt_ms / 1000.0);
+    let travel = data.balance.player_walk_speed * (dt_ms / 1000.0);
     let player = &mut game_state.player;
-    let next = clamp_player_position(vec2(player.x, player.y) + movement.normalize() * travel);
+    let next = clamp_player_position(
+        vec2(player.x, player.y) + movement.normalize() * travel,
+        data,
+    );
 
     player.x = next.x;
     player.y = next.y;
@@ -145,8 +146,8 @@ pub fn handle_player_keyboard_movement(dt_ms: f32, game_state: &mut GameState) {
     }
 }
 
-pub fn update_player_movement(dt_ms: f32, game_state: &mut GameState) {
-    let travel = PLAYER_WALK_SPEED * (dt_ms / 1000.0);
+pub fn update_player_movement(dt_ms: f32, data: &GameData, game_state: &mut GameState) {
+    let travel = data.balance.player_walk_speed * (dt_ms / 1000.0);
     let player = &mut game_state.player;
     if player.action_lock_ms > 0.0 {
         player.action_lock_ms = (player.action_lock_ms - dt_ms).max(0.0);
@@ -285,16 +286,17 @@ fn keyboard_movement_axis() -> Vec2 {
     vec2(dx, dy)
 }
 
-fn clamp_player_position(next: Vec2) -> Vec2 {
+fn clamp_player_position(next: Vec2, data: &GameData) -> Vec2 {
     if next.x < 0.0 {
         vec2(
-            next.x.clamp(KITCHEN_SERVICE_LEFT, -1.0),
+            next.x.clamp(data.balance.kitchen_service_left, -1.0),
             next.y.clamp(32.0, 160.0),
         )
     } else {
         vec2(
-            next.x.clamp(0.0, RESTAURANT_FLOOR_WIDTH),
-            next.y.clamp(52.0, RESTAURANT_FLOOR_HEIGHT - 24.0),
+            next.x.clamp(0.0, data.balance.restaurant_floor_width),
+            next.y
+                .clamp(52.0, data.balance.restaurant_floor_height - 24.0),
         )
     }
 }

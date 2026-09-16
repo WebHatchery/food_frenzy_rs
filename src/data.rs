@@ -6,6 +6,8 @@ use macroquad_toolkit::data_loader::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+mod validation;
+
 const CUSTOMER_TYPES_JSON: &str =
     macroquad_toolkit::include_json_str!("../assets/data/customer_types.json");
 const DISH_TYPES_JSON: &str =
@@ -243,6 +245,46 @@ pub struct TraitBehavior {
     pub telegraphed: bool,
 }
 
+/// Configurable timing for the Last Meal Lounge presentation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CinematicTiming {
+    #[serde(default)]
+    pub escort_ms: f32,
+    #[serde(default)]
+    pub curtain_ms: f32,
+    #[serde(default)]
+    pub quiet_ms: f32,
+    #[serde(default)]
+    pub reveal_ms: f32,
+}
+
+fn default_escort_ms() -> f32 {
+    1_400.0
+}
+
+fn default_curtain_ms() -> f32 {
+    900.0
+}
+
+fn default_quiet_ms() -> f32 {
+    800.0
+}
+
+fn default_reveal_ms() -> f32 {
+    2_600.0
+}
+
+impl Default for CinematicTiming {
+    fn default() -> Self {
+        Self {
+            escort_ms: default_escort_ms(),
+            curtain_ms: default_curtain_ms(),
+            quiet_ms: default_quiet_ms(),
+            reveal_ms: default_reveal_ms(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameBalance {
     pub customer_spawn_interval: f32,
@@ -268,19 +310,19 @@ pub struct GameBalance {
     pub special_table_process_time: f32,
     pub cooking_slots_limit: usize,
     pub starting_regular_ingredients: i64,
-    #[serde(default = "default_dish_bill_value")]
+    #[serde(default)]
     pub dish_bill_value: i64,
-    #[serde(default = "default_preferred_bill_multiplier")]
+    #[serde(default)]
     pub preferred_bill_multiplier: f64,
-    #[serde(default = "default_satisfied_tip_rate")]
+    #[serde(default)]
     pub satisfied_tip_rate: f64,
-    #[serde(default = "default_content_dwell_ms")]
+    #[serde(default)]
     pub content_dwell_ms: f32,
-    #[serde(default = "default_min_courses")]
+    #[serde(default)]
     pub min_courses: u32,
-    #[serde(default = "default_max_courses")]
+    #[serde(default)]
     pub max_courses: u32,
-    #[serde(default = "default_visits_until_ready")]
+    #[serde(default)]
     pub visits_until_ready: u32,
     /// Visits needed before a guest is Lounge-ready, indexed by profile tier
     /// (tier 1 uses index 0). Cheap early tiers land the hook fast; later
@@ -289,157 +331,111 @@ pub struct GameBalance {
     #[serde(default)]
     pub visits_until_ready_by_tier: Vec<u32>,
     /// Plated dishes served within this window pay the fresh bonus.
-    #[serde(default = "default_dish_fresh_window_ms")]
+    #[serde(default)]
     pub dish_fresh_window_ms: f32,
     /// Plated dishes older than this are discarded from the pass.
-    #[serde(default = "default_dish_spoil_ms")]
+    #[serde(default)]
     pub dish_spoil_ms: f32,
-    #[serde(default = "default_fresh_bill_bonus_multiplier")]
+    #[serde(default)]
     pub fresh_bill_bonus_multiplier: f64,
     /// How long a telegraphed trait warns before it resolves.
-    #[serde(default = "default_trait_telegraph_ms")]
+    #[serde(default)]
     pub trait_telegraph_ms: f32,
     /// Every Nth combo pays a streak bonus.
-    #[serde(default = "default_combo_milestone_interval")]
+    #[serde(default)]
     pub combo_milestone_interval: u32,
-    #[serde(default = "default_combo_milestone_cash")]
+    #[serde(default)]
     pub combo_milestone_cash: i64,
     /// Renown per seated guest when every table's order is complete at once.
-    #[serde(default = "default_full_room_bonus_points")]
+    #[serde(default)]
     pub full_room_bonus_points: i64,
     /// Length of one service day.
-    #[serde(default = "default_day_length_ms")]
+    #[serde(default)]
     pub day_length_ms: f32,
     /// How far into a day its dining event fires (0..1).
-    #[serde(default = "default_event_day_fraction")]
+    #[serde(default)]
     pub event_day_fraction: f32,
     /// Satisfied visits after which a guest counts as a regular.
-    #[serde(default = "default_regular_visits_threshold")]
+    #[serde(default)]
     pub regular_visits_threshold: u32,
     /// Meat-yield multiplier for processing a regular.
-    #[serde(default = "default_regular_yield_multiplier")]
+    #[serde(default)]
     pub regular_yield_multiplier: f32,
     /// Each prestige multiplies the next renown requirement by this.
-    #[serde(default = "default_prestige_requirement_growth")]
+    #[serde(default)]
     pub prestige_requirement_growth: f64,
     /// How long a guest spends eating a served course before wanting the next.
-    #[serde(default = "default_course_eating_ms")]
+    #[serde(default)]
     pub course_eating_ms: f32,
     /// After eating, how long a guest happily waits for the next course.
-    #[serde(default = "default_course_wait_grace_ms")]
+    #[serde(default)]
     pub course_wait_grace_ms: f32,
     /// Renown multiplier for serving a course while they are still eating.
-    #[serde(default = "default_rushed_course_score_multiplier")]
+    #[serde(default)]
     pub rushed_course_score_multiplier: f64,
     /// Renown multiplier for a well-paced course (after eating, within grace).
-    #[serde(default = "default_paced_course_score_multiplier")]
+    #[serde(default)]
     pub paced_course_score_multiplier: f64,
     /// Renown multiplier for a course that arrives after the grace window.
-    #[serde(default = "default_late_course_score_multiplier")]
+    #[serde(default)]
     pub late_course_score_multiplier: f64,
     /// Satisfaction lost per second while kept waiting past the grace window.
-    #[serde(default = "default_hangry_satisfaction_decay_per_s")]
+    #[serde(default)]
     pub hangry_satisfaction_decay_per_s: f32,
-}
-
-fn default_min_courses() -> u32 {
-    1
-}
-
-fn default_max_courses() -> u32 {
-    3
-}
-
-fn default_visits_until_ready() -> u32 {
-    5
-}
-
-fn default_dish_bill_value() -> i64 {
-    6
-}
-
-fn default_preferred_bill_multiplier() -> f64 {
-    2.0
-}
-
-fn default_satisfied_tip_rate() -> f64 {
-    0.5
-}
-
-fn default_content_dwell_ms() -> f32 {
-    4_000.0
-}
-
-fn default_dish_fresh_window_ms() -> f32 {
-    12_000.0
-}
-
-fn default_dish_spoil_ms() -> f32 {
-    32_000.0
-}
-
-fn default_fresh_bill_bonus_multiplier() -> f64 {
-    1.25
-}
-
-fn default_trait_telegraph_ms() -> f32 {
-    5_000.0
-}
-
-fn default_combo_milestone_interval() -> u32 {
-    5
-}
-
-fn default_combo_milestone_cash() -> i64 {
-    12
-}
-
-fn default_full_room_bonus_points() -> i64 {
-    40
-}
-
-fn default_day_length_ms() -> f32 {
-    180_000.0
-}
-
-fn default_event_day_fraction() -> f32 {
-    0.35
-}
-
-fn default_regular_visits_threshold() -> u32 {
-    3
-}
-
-fn default_regular_yield_multiplier() -> f32 {
-    1.5
-}
-
-fn default_prestige_requirement_growth() -> f64 {
-    1.6
-}
-
-fn default_course_eating_ms() -> f32 {
-    8_000.0
-}
-
-fn default_course_wait_grace_ms() -> f32 {
-    14_000.0
-}
-
-fn default_rushed_course_score_multiplier() -> f64 {
-    0.5
-}
-
-fn default_paced_course_score_multiplier() -> f64 {
-    1.2
-}
-
-fn default_late_course_score_multiplier() -> f64 {
-    0.75
-}
-
-fn default_hangry_satisfaction_decay_per_s() -> f32 {
-    1.2
+    #[serde(default)]
+    pub returning_guest_chance: f64,
+    #[serde(default)]
+    pub fox_steal_chance: f64,
+    #[serde(default)]
+    pub can_wander_chance: f64,
+    #[serde(default)]
+    pub monkey_throw_chance: f64,
+    #[serde(default)]
+    pub vip_accept_chance: f64,
+    #[serde(default)]
+    pub customer_walk_speed: f32,
+    #[serde(default)]
+    pub player_walk_speed: f32,
+    #[serde(default)]
+    pub restaurant_floor_width: f32,
+    #[serde(default)]
+    pub restaurant_floor_height: f32,
+    #[serde(default)]
+    pub kitchen_service_left: f32,
+    #[serde(default)]
+    pub min_customer_spawn_interval: f32,
+    #[serde(default)]
+    pub min_cook_time_ms: f32,
+    #[serde(default)]
+    pub unknown_cook_time_ms: f32,
+    #[serde(default)]
+    pub player_cooking_start_lock_ms: f32,
+    #[serde(default)]
+    pub player_interaction_range: f32,
+    #[serde(default)]
+    pub monkey_cranky_threshold: f32,
+    #[serde(default)]
+    pub can_eat_waste_satisfaction_bonus: f32,
+    #[serde(default)]
+    pub process_multiplier_bonus: f32,
+    #[serde(default)]
+    pub high_yield_multiplier: f32,
+    #[serde(default)]
+    pub influencer_score_multiplier: f64,
+    #[serde(default)]
+    pub combo_score_step: f64,
+    #[serde(default)]
+    pub prestige_point_multiplier: f64,
+    #[serde(default)]
+    pub max_deliciousness: f32,
+    #[serde(default)]
+    pub high_yield_satisfaction_multiplier: f32,
+    #[serde(default)]
+    pub gourmand_bill_multiplier: f64,
+    #[serde(default)]
+    pub fast_spoilage_decay: f32,
+    #[serde(default)]
+    pub cinematic: CinematicTiming,
 }
 
 impl Default for GameBalance {
@@ -476,24 +472,51 @@ impl Default for GameBalance {
             max_courses: 3,
             visits_until_ready: 5,
             visits_until_ready_by_tier: vec![2, 3, 4, 5],
-            day_length_ms: default_day_length_ms(),
-            event_day_fraction: default_event_day_fraction(),
-            regular_visits_threshold: default_regular_visits_threshold(),
-            regular_yield_multiplier: default_regular_yield_multiplier(),
-            prestige_requirement_growth: default_prestige_requirement_growth(),
-            course_eating_ms: default_course_eating_ms(),
-            course_wait_grace_ms: default_course_wait_grace_ms(),
-            rushed_course_score_multiplier: default_rushed_course_score_multiplier(),
-            paced_course_score_multiplier: default_paced_course_score_multiplier(),
-            late_course_score_multiplier: default_late_course_score_multiplier(),
-            hangry_satisfaction_decay_per_s: default_hangry_satisfaction_decay_per_s(),
-            dish_fresh_window_ms: default_dish_fresh_window_ms(),
-            dish_spoil_ms: default_dish_spoil_ms(),
-            fresh_bill_bonus_multiplier: default_fresh_bill_bonus_multiplier(),
-            trait_telegraph_ms: default_trait_telegraph_ms(),
-            combo_milestone_interval: default_combo_milestone_interval(),
-            combo_milestone_cash: default_combo_milestone_cash(),
-            full_room_bonus_points: default_full_room_bonus_points(),
+            day_length_ms: 180_000.0,
+            event_day_fraction: 0.35,
+            regular_visits_threshold: 3,
+            regular_yield_multiplier: 1.5,
+            prestige_requirement_growth: 1.6,
+            course_eating_ms: 8_000.0,
+            course_wait_grace_ms: 14_000.0,
+            rushed_course_score_multiplier: 0.5,
+            paced_course_score_multiplier: 1.2,
+            late_course_score_multiplier: 0.75,
+            hangry_satisfaction_decay_per_s: 1.2,
+            returning_guest_chance: 0.65,
+            fox_steal_chance: 0.35,
+            can_wander_chance: 0.25,
+            monkey_throw_chance: 0.30,
+            vip_accept_chance: 0.85,
+            customer_walk_speed: 190.0,
+            player_walk_speed: 340.0,
+            restaurant_floor_width: 1_000.0,
+            restaurant_floor_height: 620.0,
+            kitchen_service_left: -260.0,
+            min_customer_spawn_interval: 5_000.0,
+            min_cook_time_ms: 250.0,
+            unknown_cook_time_ms: 1_000.0,
+            player_cooking_start_lock_ms: 900.0,
+            player_interaction_range: 118.0,
+            monkey_cranky_threshold: 60.0,
+            can_eat_waste_satisfaction_bonus: -2.0,
+            process_multiplier_bonus: 2.0,
+            high_yield_multiplier: 1.35,
+            influencer_score_multiplier: 1.5,
+            combo_score_step: 0.1,
+            prestige_point_multiplier: 0.03,
+            max_deliciousness: 5.0,
+            high_yield_satisfaction_multiplier: 1.5,
+            gourmand_bill_multiplier: 1.5,
+            fast_spoilage_decay: 2.0,
+            cinematic: CinematicTiming::default(),
+            dish_fresh_window_ms: 12_000.0,
+            dish_spoil_ms: 32_000.0,
+            fresh_bill_bonus_multiplier: 1.25,
+            trait_telegraph_ms: 5_000.0,
+            combo_milestone_interval: 5,
+            combo_milestone_cash: 12,
+            full_room_bonus_points: 40,
         }
     }
 }
@@ -560,79 +583,153 @@ impl GameData {
     }
 
     pub fn load() -> Self {
-        Self {
+        let data = Self {
             customer_types: load_json_file_with_fallback_sync(
                 "assets/data/customer_types.json",
                 CUSTOMER_TYPES_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: customer_types.json: {error}");
+                parse_json_labeled(
+                    "embedded assets/data/customer_types.json",
+                    CUSTOMER_TYPES_JSON,
+                )
+                .expect("embedded customer_types.json must parse")
+            }),
             dish_types: load_json_file_with_fallback_sync(
                 "assets/data/dish_types.json",
                 DISH_TYPES_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: dish_types.json: {error}");
+                parse_json_labeled("embedded assets/data/dish_types.json", DISH_TYPES_JSON)
+                    .expect("embedded dish_types.json must parse")
+            }),
             upgrades: load_json_file_with_fallback_sync(
                 "assets/data/upgrades.json",
                 UPGRADES_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: upgrades.json: {error}");
+                parse_json_labeled("embedded assets/data/upgrades.json", UPGRADES_JSON)
+                    .expect("embedded upgrades.json must parse")
+            }),
             recipes: load_json_file_with_fallback_sync(
                 "assets/data/recipes.json",
                 RECIPES_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: recipes.json: {error}");
+                parse_json_labeled("embedded assets/data/recipes.json", RECIPES_JSON)
+                    .expect("embedded recipes.json must parse")
+            }),
             achievements: load_json_file_with_fallback_sync(
                 "assets/data/achievements.json",
                 ACHIEVEMENTS_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: achievements.json: {error}");
+                parse_json_labeled("embedded assets/data/achievements.json", ACHIEVEMENTS_JSON)
+                    .expect("embedded achievements.json must parse")
+            }),
             tutorial_steps: load_json_file_with_fallback_sync(
                 "assets/data/tutorial.json",
                 TUTORIAL_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: tutorial.json: {error}");
+                parse_json_labeled("embedded assets/data/tutorial.json", TUTORIAL_JSON)
+                    .expect("embedded tutorial.json must parse")
+            }),
             specializations: load_json_file_with_fallback_sync(
                 "assets/data/specializations.json",
                 SPECIALIZATIONS_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: specializations.json: {error}");
+                parse_json_labeled(
+                    "embedded assets/data/specializations.json",
+                    SPECIALIZATIONS_JSON,
+                )
+                .expect("embedded specializations.json must parse")
+            }),
             trait_behaviors: load_json_file_with_fallback_sync(
                 "assets/data/trait_behaviors.json",
                 TRAIT_BEHAVIORS_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: trait_behaviors.json: {error}");
+                parse_json_labeled(
+                    "embedded assets/data/trait_behaviors.json",
+                    TRAIT_BEHAVIORS_JSON,
+                )
+                .expect("embedded trait_behaviors.json must parse")
+            }),
             regulars: load_json_file_with_fallback_sync(
                 "assets/data/regulars.json",
                 REGULARS_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: regulars.json: {error}");
+                parse_json_labeled("embedded assets/data/regulars.json", REGULARS_JSON)
+                    .expect("embedded regulars.json must parse")
+            }),
             dining_events: load_json_file_with_fallback_sync(
                 "assets/data/dining_events.json",
                 DINING_EVENTS_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: dining_events.json: {error}");
+                parse_json_labeled(
+                    "embedded assets/data/dining_events.json",
+                    DINING_EVENTS_JSON,
+                )
+                .expect("embedded dining_events.json must parse")
+            }),
             prestige_perks: load_json_file_with_fallback_sync(
                 "assets/data/prestige_perks.json",
                 PRESTIGE_PERKS_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: prestige_perks.json: {error}");
+                parse_json_labeled(
+                    "embedded assets/data/prestige_perks.json",
+                    PRESTIGE_PERKS_JSON,
+                )
+                .expect("embedded prestige_perks.json must parse")
+            }),
             balance: load_json_file_with_fallback_sync(
                 "assets/data/game_balance.json",
                 GAME_BALANCE_JSON,
                 JsonFallbackPolicy::ReadOrParseError,
             )
-            .unwrap_or_default(),
+            .unwrap_or_else(|error| {
+                eprintln!("Feast Frenzy data fallback: game_balance.json: {error}");
+                parse_json_labeled("embedded assets/data/game_balance.json", GAME_BALANCE_JSON)
+                    .expect("embedded game_balance.json must parse")
+            }),
+        };
+        if let Err(error) = data.validate() {
+            eprintln!("Feast Frenzy content validation failed: {error}");
+            let embedded =
+                Self::load_embedded_strict().expect("embedded Feast Frenzy content must parse");
+            embedded
+                .validate()
+                .expect("embedded Feast Frenzy content must validate");
+            embedded
+        } else {
+            data
         }
     }
 

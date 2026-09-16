@@ -10,15 +10,8 @@ pub use freshness::{classify_dish_age, freshness_bill_multiplier, seconds_until_
 use crate::data::{CustomerSpecialTraits, DishType, GameBalance, GameData};
 use crate::state::{Course, Customer, ProgressionState, Satisfaction};
 
-pub const RETURNING_GUEST_CHANCE: f64 = 0.65;
-pub const FOX_STEAL_CHANCE: f64 = 0.35;
-pub const CAN_WANDER_CHANCE: f64 = 0.25;
-pub const MONKEY_THROW_CHANCE: f64 = 0.30;
-pub const VIP_ACCEPT_CHANCE: f64 = 0.85;
 pub const RESTAURANT_FLOOR_WIDTH: f32 = 1_000.0;
 pub const RESTAURANT_FLOOR_HEIGHT: f32 = 620.0;
-pub const CUSTOMER_WALK_SPEED: f32 = 190.0;
-pub const PLAYER_WALK_SPEED: f32 = 340.0;
 pub const KITCHEN_SERVICE_LEFT: f32 = -260.0;
 
 pub fn max_customer_count(data: &GameData, progression: &ProgressionState) -> usize {
@@ -30,20 +23,20 @@ pub fn max_customer_count(data: &GameData, progression: &ProgressionState) -> us
 pub fn spawn_interval_ms(data: &GameData, progression: &ProgressionState) -> f32 {
     (data.balance.customer_spawn_interval
         * progression.get_effect("spawn_interval_multiplier", 1.0) as f32)
-        .max(5_000.0)
+        .max(data.balance.min_customer_spawn_interval.max(1.0))
 }
 
 pub fn cooking_time_ms(data: &GameData, progression: &ProgressionState, color: &str) -> f32 {
     let dish = data.dish_type_by_color(color);
     if dish.is_none() {
-        return 1_000.0;
+        return data.balance.unknown_cook_time_ms.max(1.0);
     }
 
     let base = dish.unwrap().cook_time_ms;
     let multiplier = progression
         .get_effect("cook_time_multiplier", 1.0)
         .max(0.25);
-    (base * multiplier as f32).max(250.0)
+    (base * multiplier as f32).max(data.balance.min_cook_time_ms.max(1.0))
 }
 
 pub fn max_satisfaction_for_customer(
@@ -56,7 +49,7 @@ pub fn max_satisfaction_for_customer(
         base *= 0.7;
     }
     if traits.high_yield {
-        base *= 1.5;
+        base *= data.high_yield_satisfaction_multiplier.max(1.0);
     }
     let per_slot = base.max(1.0).floor();
 
@@ -99,7 +92,13 @@ pub fn serving_gain(
     if preferred {
         (data.balance.preferred_satisfaction_gain, 1.0, true)
     } else if traits.can_eat_waste {
-        (data.balance.preferred_satisfaction_gain - 2.0, 1.0, false)
+        (
+            (data.balance.preferred_satisfaction_gain
+                + data.balance.can_eat_waste_satisfaction_bonus)
+                .max(0.0),
+            1.0,
+            false,
+        )
     } else {
         (data.balance.base_satisfaction_gain, 0.0, false)
     }
@@ -224,7 +223,7 @@ pub fn serving_bill(data: &GameData, preferred: bool, traits: &CustomerSpecialTr
         base
     };
     if traits.gourmand {
-        value *= 1.5;
+        value *= data.balance.gourmand_bill_multiplier.max(1.0);
     }
     value.floor().max(0.0) as i64
 }
@@ -247,11 +246,15 @@ pub fn vip_meat_gain(customer: &Customer, data: &GameData, progression: &Progres
     // for the flavour built up from preferred dishes this sitting.
     let base = customer.times_fed as f32 + customer.deliciousness.floor();
     let bonus = if traits.multiplies_on_process {
-        2.0
+        data.balance.process_multiplier_bonus
     } else {
         0.0
     };
-    let trait_multiplier = if traits.high_yield { 1.35 } else { 1.0 };
+    let trait_multiplier = if traits.high_yield {
+        data.balance.high_yield_multiplier
+    } else {
+        1.0
+    };
     let regular_multiplier = if is_regular(customer, data) {
         data.balance.regular_yield_multiplier.max(1.0)
     } else {

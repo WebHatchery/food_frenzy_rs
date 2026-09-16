@@ -1,6 +1,5 @@
-use feast_frenzy::state::{
-    CinematicPhase, ProcessingCinematic, CURTAIN_MS, ESCORT_MS, QUIET_MS, REVEAL_MS,
-};
+use feast_frenzy::data::CinematicTiming;
+use feast_frenzy::state::{CinematicPhase, ProcessingCinematic};
 
 fn cinematic() -> ProcessingCinematic {
     ProcessingCinematic::new(
@@ -17,22 +16,24 @@ fn cinematic() -> ProcessingCinematic {
 #[test]
 fn phases_advance_in_order() {
     let mut sequence = cinematic();
+    let timing = CinematicTiming::default();
     assert_eq!(sequence.phase().0, CinematicPhase::Escort);
-    sequence.advance(ESCORT_MS + 1.0);
+    sequence.advance(timing.escort_ms + 1.0);
     assert_eq!(sequence.phase().0, CinematicPhase::Curtain);
-    sequence.advance(CURTAIN_MS);
+    sequence.advance(timing.curtain_ms);
     assert_eq!(sequence.phase().0, CinematicPhase::Quiet);
-    sequence.advance(QUIET_MS);
+    sequence.advance(timing.quiet_ms);
     assert_eq!(sequence.phase().0, CinematicPhase::Reveal);
     assert!(sequence.can_dismiss());
     assert!(!sequence.finished());
-    sequence.advance(REVEAL_MS);
+    sequence.advance(timing.reveal_ms);
     assert!(sequence.finished());
 }
 
 #[test]
 fn dismiss_is_blocked_before_the_reveal() {
     let mut sequence = cinematic();
-    sequence.advance(ESCORT_MS + CURTAIN_MS * 0.5);
+    let timing = CinematicTiming::default();
+    sequence.advance(timing.escort_ms + timing.curtain_ms * 0.5);
     assert!(!sequence.can_dismiss());
 }

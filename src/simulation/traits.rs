@@ -5,16 +5,10 @@
 //! `assets/data/trait_behaviors.json`.
 
 use crate::data::GameData;
-use crate::engine::{
-    chance, max_customer_count, CAN_WANDER_CHANCE, FOX_STEAL_CHANCE, MONKEY_THROW_CHANCE,
-};
+use crate::engine::{chance, max_customer_count};
 use crate::gameplay::dish_display_name;
 use crate::state::{FloaterKind, GameState, ProgressionState, Timers, TraitAlert};
 use std::collections::HashSet;
-
-/// Monkeys tantrum only below this satisfaction; feeding them above it during
-/// the telegraph window is the counterplay.
-pub const MONKEY_CRANKY_THRESHOLD: f32 = 60.0;
 
 pub(super) fn update_traits(
     dt_ms: f32,
@@ -48,7 +42,9 @@ fn tick_customer_traits(
     let traits = game_state.customers[index].traits(data);
 
     if traits.fast_spoilage {
-        game_state.customers[index].satisfaction.decay_all(2.0);
+        game_state.customers[index]
+            .satisfaction
+            .decay_all(data.balance.fast_spoilage_decay);
         game_state.customers[index].refresh_totals();
         surface_first_encounter_hint("fast_spoilage", index, data, game_state, progression);
     }
@@ -57,20 +53,22 @@ fn tick_customer_traits(
         return;
     }
 
-    let armed_key =
-        if traits.can_steal_food && chance(FOX_STEAL_CHANCE) && any_plated_dish(game_state) {
-            Some("can_steal_food")
-        } else if traits.throws_food
-            && chance(MONKEY_THROW_CHANCE)
-            && game_state.customers[index].total_satisfaction < MONKEY_CRANKY_THRESHOLD
-            && game_state.customers[index].total_satisfaction > 0.0
-        {
-            Some("throws_food")
-        } else if traits.can_wander && chance(CAN_WANDER_CHANCE) {
-            Some("can_wander")
-        } else {
-            None
-        };
+    let armed_key = if traits.can_steal_food
+        && chance(data.balance.fox_steal_chance)
+        && any_plated_dish(game_state)
+    {
+        Some("can_steal_food")
+    } else if traits.throws_food
+        && chance(data.balance.monkey_throw_chance)
+        && game_state.customers[index].total_satisfaction < data.balance.monkey_cranky_threshold
+        && game_state.customers[index].total_satisfaction > 0.0
+    {
+        Some("throws_food")
+    } else if traits.can_wander && chance(data.balance.can_wander_chance) {
+        Some("can_wander")
+    } else {
+        None
+    };
 
     let Some(trait_key) = armed_key else {
         return;
@@ -170,7 +168,9 @@ fn resolve_alert(
         }
         "throws_food" => {
             // Counterplay: satisfaction raised above the cranky threshold.
-            if game_state.customers[index].total_satisfaction >= MONKEY_CRANKY_THRESHOLD {
+            if game_state.customers[index].total_satisfaction
+                >= data.balance.monkey_cranky_threshold
+            {
                 game_state.add_message(format!("{name} settled down, belly full."));
                 return;
             }

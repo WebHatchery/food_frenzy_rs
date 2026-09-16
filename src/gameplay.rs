@@ -162,7 +162,8 @@ pub fn serve_customer(
             let limit = max_total * overfeed_multiplier(data, &traits);
             *existing = (*existing + satisfaction_gain).min(limit);
         }
-        customer.deliciousness = (customer.deliciousness + delicious_gain).min(5.0);
+        customer.deliciousness =
+            (customer.deliciousness + delicious_gain).min(data.balance.max_deliciousness);
         customer.refresh_totals();
     }
 
@@ -180,9 +181,9 @@ pub fn serve_customer(
     let served_fresh = dish_freshness == Freshness::Fresh;
     if customer_traits.influencer && served_fresh {
         // A tastemaker praising a fresh dish carries further.
-        score_gain *= 1.5;
+        score_gain *= data.balance.influencer_score_multiplier;
     }
-    let total_gain = add_score(game_state, progression, score_gain, true);
+    let total_gain = add_score(data, game_state, progression, score_gain, true);
     let fresh_multiplier = freshness_bill_multiplier(dish_freshness, &data.balance);
     let bill_gain = ((serving_bill(data, preferred, &customer_traits) as f64) * fresh_multiplier)
         .round() as i64;
@@ -302,7 +303,7 @@ fn award_streak_bonuses(
         game_state.full_room_bonus_armed = false;
         progression.record_full_house();
         let points = data.balance.full_room_bonus_points * game_state.customers.len().max(1) as i64;
-        let awarded = add_score(game_state, progression, points as f64, false);
+        let awarded = add_score(data, game_state, progression, points as f64, false);
         game_state.floaters.spawn(
             format!("Full house served! +{awarded} renown"),
             FloaterKind::Renown,
@@ -360,7 +361,7 @@ pub fn invite_customer_to_vip(
         return false;
     }
 
-    if !crate::engine::chance(crate::engine::VIP_ACCEPT_CHANCE) {
+    if !crate::engine::chance(data.balance.vip_accept_chance) {
         game_state.add_message(format!(
             "{} declined the invitation.",
             game_state.customers[index].display_name
@@ -403,7 +404,7 @@ pub fn invite_customer_to_vip(
 
     let meal_points = ((vip_points(&customer, data) as f64) + (meat_gain as f64 * 10.0))
         * data.balance.base_score_multiplier;
-    let awarded = add_score(game_state, progression, meal_points, true);
+    let awarded = add_score(data, game_state, progression, meal_points, true);
     let cash_gain = (awarded / 5).max(0);
     progression.add_currency(cash_gain);
     progression.record_processed_customer(&customer.customer_type, chain_value);
@@ -424,7 +425,8 @@ pub fn invite_customer_to_vip(
         awarded,
         cash_gain,
         (customer.floor_x, customer.floor_y),
-    );
+    )
+    .with_timing(data.balance.cinematic.clone());
     cinematic.farewell = farewell;
     game_state.processing_cinematic = Some(cinematic);
     game_state.queue_sfx(crate::state::SfxCue::LoungeSting);
@@ -517,7 +519,7 @@ pub fn craft_recipe(
         * recipe.profit_multiplier
         * recipe_value_multiplier(progression)
         * data.balance.base_score_multiplier;
-    let awarded = add_score(game_state, progression, points, false);
+    let awarded = add_score(data, game_state, progression, points, false);
     let cash_gain = awarded / 4;
     progression.add_currency(cash_gain);
     game_state.day_cycle.stats.renown_earned += awarded;
@@ -575,6 +577,7 @@ fn spend_ingredient_pairs(
 }
 
 fn add_score(
+    data: &GameData,
     game_state: &mut GameState,
     progression: &mut ProgressionState,
     points: f64,
@@ -582,11 +585,12 @@ fn add_score(
 ) -> i64 {
     let combo_multiplier = if apply_combo {
         let combo_boost = progression.get_effect("combo_multiplier", 1.0);
-        1.0 + (f64::from(game_state.combo) * 0.1 * combo_boost)
+        1.0 + (f64::from(game_state.combo) * data.balance.combo_score_step * combo_boost)
     } else {
         1.0
     };
-    let prestige_multiplier = 1.0 + (f64::from(progression.prestige_points) * 0.03);
+    let prestige_multiplier =
+        1.0 + (f64::from(progression.prestige_points) * data.balance.prestige_point_multiplier);
     let awarded = (points * combo_multiplier * prestige_multiplier).max(0.0);
 
     let next_score = awarded.floor() as i64;

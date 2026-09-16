@@ -3,13 +3,9 @@
 //! line. Pure timing/state — drawing lives in `ui::lounge`. Rewards are
 //! applied when the invite succeeds; this struct only carries what to show.
 
+use crate::data::CinematicTiming;
 use macroquad_toolkit::timing::Timeline;
 use serde::{Deserialize, Serialize};
-
-pub const ESCORT_MS: f32 = 1_400.0;
-pub const CURTAIN_MS: f32 = 900.0;
-pub const QUIET_MS: f32 = 800.0;
-pub const REVEAL_MS: f32 = 2_600.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CinematicPhase {
@@ -35,6 +31,8 @@ pub struct ProcessingCinematic {
     pub from_floor: (f32, f32),
     /// Personality farewell line shown in the reveal, if the guest had one.
     pub farewell: Option<String>,
+    #[serde(default)]
+    pub timing: CinematicTiming,
     pub elapsed_ms: f32,
 }
 
@@ -57,18 +55,24 @@ impl ProcessingCinematic {
             cash_gain,
             from_floor,
             farewell: None,
+            timing: CinematicTiming::default(),
             elapsed_ms: 0.0,
         }
     }
 
+    pub fn with_timing(mut self, timing: CinematicTiming) -> Self {
+        self.timing = timing;
+        self
+    }
+
     /// The fixed phase table, in order. Shared by [`total_ms`](Self::total_ms)
     /// and [`phase`](Self::phase) via a fresh [`Timeline`] built from it.
-    fn phase_table() -> Vec<(CinematicPhase, f32)> {
+    fn phase_table(&self) -> Vec<(CinematicPhase, f32)> {
         vec![
-            (CinematicPhase::Escort, ESCORT_MS),
-            (CinematicPhase::Curtain, CURTAIN_MS),
-            (CinematicPhase::Quiet, QUIET_MS),
-            (CinematicPhase::Reveal, REVEAL_MS),
+            (CinematicPhase::Escort, self.timing.escort_ms.max(0.0)),
+            (CinematicPhase::Curtain, self.timing.curtain_ms.max(0.0)),
+            (CinematicPhase::Quiet, self.timing.quiet_ms.max(0.0)),
+            (CinematicPhase::Reveal, self.timing.reveal_ms.max(0.0)),
         ]
     }
 
@@ -76,13 +80,13 @@ impl ProcessingCinematic {
     /// Rebuilt on demand rather than stored, since `elapsed_ms` is the only
     /// field persisted to save data.
     fn timeline_at(&self) -> Timeline<CinematicPhase> {
-        let mut timeline = Timeline::new(Self::phase_table());
+        let mut timeline = Timeline::new(self.phase_table());
         timeline.advance(self.elapsed_ms);
         timeline
     }
 
-    pub fn total_ms() -> f32 {
-        Timeline::new(Self::phase_table()).total_duration()
+    pub fn total_ms(&self) -> f32 {
+        Timeline::new(self.phase_table()).total_duration()
     }
 
     pub fn advance(&mut self, dt_ms: f32) {

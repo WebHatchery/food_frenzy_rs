@@ -25,18 +25,18 @@ const BUBBLE_TEXT: Color = Color::new(0.12, 0.09, 0.08, 1.0);
 const TONE_TINT: Color = Color::new(0.10, 0.01, 0.03, 1.0);
 const TONE_GLOW: Color = Color::new(0.55, 0.10, 0.10, 1.0);
 
-pub(super) fn draw_ambient_chatter(floor: Rect, game: &GameState, data: &GameData) {
+pub(super) fn draw_ambient_chatter(floor: Rect, game: &GameState, data: &GameData, now_ms: f64) {
     for customer in &game.customers {
         // Warnings own the space above the guest; chatter yields to them.
         if !customer.is_seated || customer.trait_alert.is_some() {
             continue;
         }
-        let clock = macroquad::time::get_time() + f64::from(customer.id) * 7.31;
-        let phase = clock % CHATTER_CYCLE_S;
+        let clock_s = now_ms / 1000.0 + f64::from(customer.id) * 7.31;
+        let phase = clock_s % CHATTER_CYCLE_S;
         if phase >= CHATTER_SHOW_S {
             continue;
         }
-        let cycle_index = (clock / CHATTER_CYCLE_S) as usize;
+        let cycle_index = (clock_s / CHATTER_CYCLE_S) as usize;
         let Some(line) = chatter_line(customer, data, cycle_index) else {
             continue;
         };
