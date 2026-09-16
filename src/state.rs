@@ -150,7 +150,7 @@ impl Default for PlayerActor {
             target_x: -235.0,
             target_y: 104.0,
             carried_station: None,
-            task_label: "Prep".to_string(),
+            task_label: String::new(),
             clear_carry_on_arrival: false,
             action_lock_ms: 0.0,
             lock_on_arrival_ms: 0.0,
@@ -552,7 +552,11 @@ impl GameState {
             special_table_timer: 0.0,
             messages: vec![data.text("service_started").to_string()],
             next_customer_id: 1,
-            player: PlayerActor::default(),
+            player: {
+                let mut player = PlayerActor::default();
+                player.task_label = data.text("task_prep").to_string();
+                player
+            },
             tutorial: TutorialProgress::default(),
             floaters: Floaters::default(),
             processing_cinematic: None,

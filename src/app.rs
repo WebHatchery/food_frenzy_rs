@@ -7,7 +7,7 @@ use crate::assets::{
 use crate::audio::AudioBank;
 use crate::commands::{
     apply_ui_command, clear_empty_selection, handle_keyboard_shortcuts, read_input_action,
-    read_settings_action, read_title_action,
+    read_settings_action, read_title_action, UiCommandContext,
 };
 use crate::data::GameData;
 use crate::lifecycle::{load_saved_game, start_new_game};
@@ -302,11 +302,13 @@ impl App {
         if let Some(command) = read_input_action(ui_hits) {
             apply_ui_command(
                 command,
-                &self.data,
-                &mut self.selected_station,
-                &mut self.game_state,
-                &mut self.progression_state,
-                &mut self.guest_state,
+                UiCommandContext::new(
+                    &self.data,
+                    &mut self.selected_station,
+                    &mut self.game_state,
+                    &mut self.progression_state,
+                    &mut self.guest_state,
+                ),
             );
         }
 

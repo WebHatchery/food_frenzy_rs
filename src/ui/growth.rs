@@ -165,7 +165,7 @@ fn draw_guest_card(
             if can_attract { TEXT } else { MUTED },
         );
         draw_ui_text(
-            &ellipsize(&format_unlock_cost(&customer_type.unlock_cost), 22),
+            &ellipsize(&format_unlock_cost(data, &customer_type.unlock_cost), 22),
             card.x + 12.0,
             next_y + 43.0,
             12.0,
@@ -203,11 +203,14 @@ fn draw_upgrade_card(
     for upgrade in progression.upgrades.iter().take(2) {
         let can_buy = progression.currency >= upgrade.cost && upgrade.level < upgrade.max_level;
         draw_ui_text(
-            &format!(
-                "{}  Lv. {}/{}",
-                ellipsize(&upgrade.name, 18),
-                upgrade.level,
-                upgrade.max_level
+            &data.text_format(
+                "ui_upgrade_level",
+                [
+                    ("name", ellipsize(&upgrade.name, 18)),
+                    ("level", upgrade.level.to_string()),
+                    ("max", upgrade.max_level.to_string()),
+                ]
+                .as_slice(),
             ),
             card.x + 12.0,
             y,
@@ -215,7 +218,7 @@ fn draw_upgrade_card(
             if can_buy { TEXT } else { MUTED },
         );
         draw_ui_text(
-            &format!("${}", upgrade.cost),
+            &data.text_format("ui_cost", [("amount", upgrade.cost.to_string())].as_slice()),
             card.x + 12.0,
             y + 17.0,
             12.0,
@@ -334,7 +337,10 @@ fn draw_prestige_card(
         card.y + 42.0
     };
     draw_row_value(
-        &format!("Level {}", progression.prestige_level),
+        &data.text_format(
+            "ui_level",
+            [("level", progression.prestige_level.to_string())].as_slice(),
+        ),
         &format!("{}/{}", progression.total_score, requirement),
         Rect::new(card.x + 12.0, row_y, card.w - 24.0, 22.0),
         TEXT,
@@ -360,7 +366,10 @@ fn draw_prestige_card(
     let can_prestige = progression.total_score >= requirement;
     draw_button(
         prestige_rect,
-        &format!("Prestige +{}", progression.prestige_reward()),
+        &data.text_format(
+            "ui_prestige_button",
+            [("reward", progression.prestige_reward().to_string())].as_slice(),
+        ),
         can_prestige,
         !can_prestige,
     );

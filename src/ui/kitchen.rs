@@ -56,7 +56,14 @@ pub(super) fn draw_kitchen(
         .count();
     draw_row_value(
         data.text("ui_station_load"),
-        &format!("{cooking} cooking / {ready} ready"),
+        &data.text_format(
+            "ui_station_load_value",
+            [
+                ("cooking", cooking.to_string()),
+                ("ready", ready.to_string()),
+            ]
+            .as_slice(),
+        ),
         Rect::new(hero.x + 12.0, hero.y + hero.h + 10.0, hero.w - 24.0, 22.0),
         SUCCESS,
     );

@@ -4,7 +4,7 @@
 use super::super::common::{draw_bar, ellipsize, station_draw_color, GOLD, LINE, MUTED, TEXT};
 use super::super::sprites::{self, Region};
 use crate::data::GameData;
-use crate::state::GameState;
+use crate::state::{GameState, ProgressionState};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::draw_ui_text;
 
@@ -110,7 +110,12 @@ pub(super) fn draw_room_fixtures(floor: Rect, data: &GameData) {
 
 /// Dress the room with interim-art decor, kept to the top wall and right edge
 /// so it stays clear of tables, the door, the plaque, and the lounge.
-pub(super) fn draw_room_decor(floor: Rect, sheet: &Texture2D) {
+pub(super) fn draw_room_decor(
+    floor: Rect,
+    sheet: &Texture2D,
+    progression: &ProgressionState,
+    data: &GameData,
+) {
     // Garland strung across the top wall.
     sprites::blit(
         sheet,
@@ -147,6 +152,76 @@ pub(super) fn draw_room_decor(floor: Rect, sheet: &Texture2D) {
         floor.y + floor.h * 0.52,
         84.0,
     );
+    draw_progression_decor(floor, progression, data, sheet);
+}
+
+fn draw_progression_decor(
+    floor: Rect,
+    progression: &ProgressionState,
+    data: &GameData,
+    sheet: &Texture2D,
+) {
+    let tier = crate::engine::highest_unlocked_customer_tier(data, progression);
+    if tier >= 2 {
+        // Tier two earns a warm runner that visually separates the dining
+        // room from the kitchen's service lane.
+        draw_rectangle(
+            floor.x + floor.w * 0.40,
+            floor.y + 112.0,
+            floor.w * 0.42,
+            12.0,
+            Color::new(0.34, 0.12, 0.10, 0.72),
+        );
+        draw_rectangle_lines(
+            floor.x + floor.w * 0.40,
+            floor.y + 112.0,
+            floor.w * 0.42,
+            12.0,
+            1.0,
+            GOLD,
+        );
+    }
+    if tier >= 3 {
+        // Mid-ladder clientele bring another framed course to the wall.
+        sprites::blit_grounded(
+            sheet,
+            Region::FramedPic,
+            floor.x + floor.w * 0.40,
+            floor.y + 84.0,
+            54.0,
+        );
+    }
+    if tier >= 4 {
+        // The richer room gets a second plant and a darker, more deliberate
+        // wall stripe without taking space from service hitboxes.
+        sprites::blit_grounded(
+            sheet,
+            Region::Plant,
+            floor.x + floor.w * 0.12,
+            floor.y + floor.h * 0.54,
+            70.0,
+        );
+        draw_rectangle(
+            floor.x + floor.w * 0.36,
+            floor.y + 94.0,
+            floor.w * 0.48,
+            3.0,
+            Color::new(0.70, 0.24, 0.18, 0.70),
+        );
+    }
+    if tier >= 5 {
+        // Dragon clientele leave a small ember crest above the pass: a
+        // distinct fifth-tier room state built from the shared drawing API.
+        let crest = vec2(floor.x + floor.w * 0.86, floor.y + 72.0);
+        draw_circle(crest.x, crest.y, 16.0, Color::new(0.23, 0.05, 0.05, 0.92));
+        draw_circle_lines(crest.x, crest.y, 17.0, 2.0, GOLD);
+        draw_triangle(
+            crest + vec2(-9.0, 2.0),
+            crest + vec2(0.0, -10.0),
+            crest + vec2(9.0, 2.0),
+            Color::new(0.90, 0.30, 0.20, 0.92),
+        );
+    }
 }
 
 pub(super) fn draw_last_meal_lounge(

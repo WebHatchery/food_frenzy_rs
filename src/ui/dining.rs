@@ -95,7 +95,13 @@ fn draw_table(
     );
 
     let Some(customer) = customer else {
-        draw_ui_text("open", center.x - 16.0, center.y + 27.0, 13.0, MUTED);
+        draw_ui_text(
+            data.text("ui_open"),
+            center.x - 16.0,
+            center.y + 27.0,
+            13.0,
+            MUTED,
+        );
         return;
     };
 
@@ -162,7 +168,7 @@ pub(super) fn draw_dining_room(
     super::ambience::draw_tier_tone(floor, progression, data);
     room::draw_room_fixtures(floor, data);
     if let Some(sheet) = interior_sheet {
-        room::draw_room_decor(floor, sheet);
+        room::draw_room_decor(floor, sheet, progression, data);
     }
     draw_rectangle_lines(floor.x, floor.y, floor.w, floor.h, 1.5, LINE);
 

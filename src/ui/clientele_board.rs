@@ -184,7 +184,7 @@ fn draw_clientele_row(
             SUCCESS,
         );
     } else {
-        let cost_text = format_unlock_cost(&customer_type.unlock_cost);
+        let cost_text = format_unlock_cost(data, &customer_type.unlock_cost);
         let cost_dim = measure_ui_text(&cost_text, None, 12, 1.0);
         draw_ui_text(
             &cost_text,

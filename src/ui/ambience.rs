@@ -91,14 +91,7 @@ fn chatter_line<'data>(
 /// The higher the clientele ladder climbs, the less cozy the room reads: a
 /// creeping red-dark cast, deliberate and just shy of subliminal.
 pub(super) fn draw_tier_tone(floor: Rect, progression: &ProgressionState, data: &GameData) {
-    let tone_tier = data
-        .customer_types
-        .iter()
-        .filter(|customer_type| progression.is_customer_unlocked(&customer_type.id))
-        .map(|customer_type| customer_type.profile_tier)
-        .max()
-        .unwrap_or(1)
-        .max(1);
+    let tone_tier = crate::engine::highest_unlocked_customer_tier(data, progression);
     if tone_tier <= 1 {
         return;
     }

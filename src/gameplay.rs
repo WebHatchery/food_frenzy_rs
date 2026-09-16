@@ -17,7 +17,7 @@ use crate::state::{
 pub fn dish_display_name(data: &GameData, color: &str) -> String {
     data.dish_type_by_color(color)
         .map(|dish| dish.name.clone())
-        .unwrap_or_else(|| format!("{color} dish"))
+        .unwrap_or_else(|| data.text("ui_dish_unknown").to_string())
 }
 
 pub fn try_prestige(
@@ -116,179 +116,252 @@ pub fn serve_customer(
     progression: &mut ProgressionState,
     guest_state: &mut GuestState,
 ) -> bool {
-    let Some(pos) = game_state
-        .customers
-        .iter()
-        .position(|customer| customer.id == customer_id)
-    else {
+    let Some(plan) = prepare_serve(station_color, customer_id, data, game_state) else {
         return false;
     };
-    if !game_state.customers[pos].is_seated {
+    let total_gain = award_course_score(&plan, data, game_state, progression);
+    let served = settle_course(&plan, data, game_state);
+    record_course(
+        &plan,
+        &served,
+        total_gain,
+        data,
+        game_state,
+        progression,
+        guest_state,
+    );
+    show_course_feedback(&plan, total_gain, data, game_state);
+    game_state.queue_sfx(crate::state::SfxCue::Serve);
+    game_state.tutorial_observe(TutorialTrigger::CourseServed, data);
+    award_streak_bonuses(data, game_state, progression, plan.floor_x, plan.floor_y);
+    true
+}
+
+struct ServePlan {
+    customer_index: usize,
+    course_index: usize,
+    dish_name: String,
+    freshness: Freshness,
+    satisfaction_gain: f32,
+    preferred: bool,
+    pacing: CoursePacing,
+    customer_traits: crate::data::CustomerSpecialTraits,
+    is_overfed: bool,
+    floor_x: f32,
+    floor_y: f32,
+}
+
+struct ServedCourse {
+    customer_name: String,
+    guest_id: String,
+    course_label: String,
+    courses_done: usize,
+    courses_total: usize,
+    running_tab: i64,
+}
+
+fn prepare_serve(
+    station_color: &str,
+    customer_id: u32,
+    data: &GameData,
+    game_state: &mut GameState,
+) -> Option<ServePlan> {
+    let customer_index = game_state
+        .customers
+        .iter()
+        .position(|customer| customer.id == customer_id)?;
+    let customer = &game_state.customers[customer_index];
+    if !customer.is_seated {
         game_state.add_message(data.text_format(
             "message_guest_walking",
-            [("name", game_state.customers[pos].display_name.clone())].as_slice(),
+            [("name", customer.display_name.clone())].as_slice(),
         ));
-        return false;
+        return None;
     }
-
-    let Some(course_idx) = game_state.customers[pos].next_course_for(station_color) else {
+    let Some(course_index) = customer.next_course_for(station_color) else {
         game_state.add_message(
             data.text_format(
                 "message_did_not_order",
                 [
-                    ("name", game_state.customers[pos].display_name.clone()),
+                    ("name", customer.display_name.clone()),
                     ("dish", dish_display_name(data, station_color)),
                 ]
                 .as_slice(),
             ),
         );
-        return false;
+        return None;
     };
-
-    let (dish_name, dish_freshness) = {
-        let Some(station) = game_state.station_mut(station_color) else {
-            return false;
-        };
-        if station.dishes.is_empty() {
-            return false;
-        }
-        let dish = station.dishes.remove(0);
-        (dish.name, classify_dish_age(dish.age_ms, &data.balance))
-    };
-
-    let (satisfaction_gain, delicious_gain, preferred) = {
-        let customer = &game_state.customers[pos];
-        let traits = customer.traits(data);
+    let dish = game_state
+        .station_mut(station_color)
+        .and_then(|station| (!station.dishes.is_empty()).then(|| station.dishes.remove(0)))?;
+    let freshness = classify_dish_age(dish.age_ms, &data.balance);
+    let customer = &game_state.customers[customer_index];
+    let traits = customer.traits(data);
+    let (satisfaction_gain, delicious_gain, preferred) =
         if data.customer_type_by_id(&customer.customer_type).is_some() {
             serving_gain(data, &customer.customer_type, &traits, station_color)
         } else {
             (data.balance.base_satisfaction_gain, 0.0, false)
-        }
-    };
-
-    {
-        let customer = &mut game_state.customers[pos];
-        let traits = customer.traits(data);
-        if let Some(existing) = customer.satisfaction.get_mut(station_color) {
-            let max_total = customer.max_satisfaction.get(station_color).unwrap_or(40.0);
-            let limit = max_total * overfeed_multiplier(data, &traits);
-            *existing = (*existing + satisfaction_gain).min(limit);
-        }
-        customer.deliciousness =
-            (customer.deliciousness + delicious_gain).min(data.balance.max_deliciousness);
-        customer.refresh_totals();
+        };
+    let pacing = classify_course_pacing(customer, &data.balance);
+    let customer = &mut game_state.customers[customer_index];
+    if let Some(existing) = customer.satisfaction.get_mut(station_color) {
+        let max_total = customer.max_satisfaction.get(station_color).unwrap_or(40.0);
+        let limit = max_total * overfeed_multiplier(data, &traits);
+        *existing = (*existing + satisfaction_gain).min(limit);
     }
+    customer.deliciousness =
+        (customer.deliciousness + delicious_gain).min(data.balance.max_deliciousness);
+    customer.refresh_totals();
+    Some(ServePlan {
+        customer_index,
+        course_index,
+        dish_name: dish.name,
+        freshness,
+        satisfaction_gain,
+        preferred,
+        pacing,
+        customer_traits: traits,
+        is_overfed: customer.overfed,
+        floor_x: customer.floor_x,
+        floor_y: customer.floor_y,
+    })
+}
 
-    let is_overfed = game_state.customers[pos].overfed;
-    let customer_traits = game_state.customers[pos].traits(data);
-    // Judge the meal rhythm before this serve mutates the order state.
-    let pacing = classify_course_pacing(&game_state.customers[pos], &data.balance);
-    let mut score_gain = serving_points(data, satisfaction_gain, preferred) as f64;
-    score_gain *= pacing_score_multiplier(pacing, &data.balance);
+fn award_course_score(
+    plan: &ServePlan,
+    data: &GameData,
+    game_state: &mut GameState,
+    progression: &mut ProgressionState,
+) -> i64 {
+    let mut score_gain = serving_points(data, plan.satisfaction_gain, plan.preferred) as f64;
+    score_gain *= pacing_score_multiplier(plan.pacing, &data.balance);
     if let Some(EventEffect::ServeRenownMultiplier { multiplier }) =
         game_state.active_event_effect(data)
     {
         score_gain *= multiplier.max(1.0);
     }
-    let served_fresh = dish_freshness == Freshness::Fresh;
-    if customer_traits.influencer && served_fresh {
-        // A tastemaker praising a fresh dish carries further.
+    if plan.customer_traits.influencer && plan.freshness == Freshness::Fresh {
         score_gain *= data.balance.influencer_score_multiplier;
     }
-    let total_gain = add_score(data, game_state, progression, score_gain, true);
-    let fresh_multiplier = freshness_bill_multiplier(dish_freshness, &data.balance);
-    let bill_gain = ((serving_bill(data, preferred, &customer_traits) as f64) * fresh_multiplier)
+    add_score(data, game_state, progression, score_gain, true)
+}
+
+fn settle_course(plan: &ServePlan, data: &GameData, game_state: &mut GameState) -> ServedCourse {
+    let fresh_multiplier = freshness_bill_multiplier(plan.freshness, &data.balance);
+    let bill_gain = ((serving_bill(data, plan.preferred, &plan.customer_traits) as f64)
+        * fresh_multiplier)
         .round() as i64;
-    let (course_label, courses_done, courses_total, running_tab) = {
-        let customer = &mut game_state.customers[pos];
-        customer.order[course_idx].served = true;
-        customer.eating_ms = data.balance.course_eating_ms.max(0.0);
-        customer.waiting_ms = 0.0;
-        customer.bill = customer.bill.saturating_add(bill_gain);
-        (
-            customer.order[course_idx].label.clone(),
-            customer.courses_served(),
-            customer.order.len(),
-            customer.bill,
-        )
-    };
-    progression.record_served_dish(preferred, is_overfed);
-    if served_fresh {
+    let customer = &mut game_state.customers[plan.customer_index];
+    customer.order[plan.course_index].served = true;
+    customer.eating_ms = data.balance.course_eating_ms.max(0.0);
+    customer.waiting_ms = 0.0;
+    customer.bill = customer.bill.saturating_add(bill_gain);
+    ServedCourse {
+        customer_name: customer.display_name.clone(),
+        guest_id: customer.guest_id.clone(),
+        course_label: customer.order[plan.course_index].label.clone(),
+        courses_done: customer.courses_served(),
+        courses_total: customer.order.len(),
+        running_tab: customer.bill,
+    }
+}
+
+fn record_course(
+    plan: &ServePlan,
+    served: &ServedCourse,
+    total_gain: i64,
+    data: &GameData,
+    game_state: &mut GameState,
+    progression: &mut ProgressionState,
+    guest_state: &mut GuestState,
+) {
+    progression.record_served_dish(plan.preferred, plan.is_overfed);
+    if plan.freshness == Freshness::Fresh {
         progression.record_fresh_dish();
         game_state.day_cycle.stats.fresh_dishes += 1;
     }
     game_state.day_cycle.stats.renown_earned += total_gain;
-    guest_state.record_guest_fed(&game_state.customers[pos].guest_id);
+    guest_state.record_guest_fed(&served.guest_id);
     game_state.combo = game_state.combo.saturating_add(1);
     game_state.chain = game_state.chain.saturating_add(1);
     progression.record_combo_peak(game_state.combo);
-    let current_combo = game_state.combo;
-    game_state.day_cycle.record_combo(current_combo);
+    game_state.day_cycle.record_combo(game_state.combo);
     game_state.add_message(
         data.text_format(
             "message_serve_result",
             [
-                ("name", game_state.customers[pos].display_name.clone()),
-                ("course", course_label),
-                ("dish", dish_name),
+                ("name", served.customer_name.clone()),
+                ("course", served.course_label.clone()),
+                ("dish", plan.dish_name.clone()),
                 ("points", total_gain.to_string()),
-                ("tab", running_tab.to_string()),
-                ("done", courses_done.to_string()),
-                ("total", courses_total.to_string()),
+                ("tab", served.running_tab.to_string()),
+                ("done", served.courses_done.to_string()),
+                ("total", served.courses_total.to_string()),
             ]
             .as_slice(),
         ),
     );
-    let (floor_x, floor_y) = {
-        let customer = &game_state.customers[pos];
-        (customer.floor_x, customer.floor_y)
+}
+
+fn show_course_feedback(
+    plan: &ServePlan,
+    total_gain: i64,
+    data: &GameData,
+    game_state: &mut GameState,
+) {
+    let flavor = match (plan.preferred, plan.freshness) {
+        (true, Freshness::Fresh) => data.text("ui_flavor_loved_fresh").to_string(),
+        (true, _) => data.text("ui_flavor_loved").to_string(),
+        (false, Freshness::Fresh) => data.text("ui_flavor_fresh").to_string(),
+        (false, _) => String::new(),
     };
-    let flavor_tag = match (preferred, dish_freshness) {
-        (true, Freshness::Fresh) => "  (loved it, fresh!)",
-        (true, _) => "  (loved it!)",
-        (false, Freshness::Fresh) => "  (fresh)",
-        (false, _) => "",
-    };
-    let pacing_tag = if pacing == CoursePacing::WellPaced {
-        "  well paced"
+    let pacing = if plan.pacing == CoursePacing::WellPaced {
+        data.text("ui_well_paced")
     } else {
         ""
     };
     game_state.floaters.spawn_at(
-        format!("+{total_gain} renown{flavor_tag}{pacing_tag}"),
+        data.text_format(
+            "ui_serve_floater",
+            [
+                ("points", total_gain.to_string()),
+                ("flavor", flavor),
+                ("pacing", pacing.to_string()),
+            ]
+            .as_slice(),
+        ),
         FloaterKind::Renown,
-        floor_x,
-        floor_y,
+        plan.floor_x,
+        plan.floor_y,
     );
-    match pacing {
-        CoursePacing::Rushed => {
-            let name = game_state.customers[pos].display_name.clone();
-            game_state.floaters.spawn_at(
-                data.text("ui_rushed_floater"),
-                FloaterKind::Alert,
-                floor_x,
-                floor_y,
-            );
-            game_state.add_message(data.text_format("message_rushed", [("name", name)].as_slice()));
-        }
-        CoursePacing::KeptWaiting => {
-            let name = game_state.customers[pos].display_name.clone();
-            game_state.floaters.spawn_at(
-                data.text("ui_waiting_floater"),
-                FloaterKind::Alert,
-                floor_x,
-                floor_y,
-            );
-            game_state
-                .add_message(data.text_format("message_kept_waiting", [("name", name)].as_slice()));
-        }
-        _ => {}
+    let (floater_key, message_key) = match plan.pacing {
+        CoursePacing::Rushed => (Some("ui_rushed_floater"), Some("message_rushed")),
+        CoursePacing::KeptWaiting => (Some("ui_waiting_floater"), Some("message_kept_waiting")),
+        _ => (None, None),
+    };
+    if let Some(key) = floater_key {
+        game_state.floaters.spawn_at(
+            data.text(key),
+            FloaterKind::Alert,
+            plan.floor_x,
+            plan.floor_y,
+        );
     }
-    game_state.queue_sfx(crate::state::SfxCue::Serve);
-    game_state.tutorial_observe(TutorialTrigger::CourseServed, data);
-    award_streak_bonuses(data, game_state, progression, floor_x, floor_y);
-
-    true
+    if let Some(key) = message_key {
+        game_state.add_message(
+            data.text_format(
+                key,
+                [(
+                    "name",
+                    game_state.customers[plan.customer_index]
+                        .display_name
+                        .clone(),
+                )]
+                .as_slice(),
+            ),
+        );
+    }
 }
 
 /// Combo-milestone cash and the full-house renown bonus (every seated order

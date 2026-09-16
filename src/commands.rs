@@ -35,6 +35,32 @@ pub enum UiCommand {
     StartNextDay,
 }
 
+pub struct UiCommandContext<'a> {
+    data: &'a GameData,
+    selected_station: &'a mut Option<String>,
+    game_state: &'a mut GameState,
+    progression: &'a mut ProgressionState,
+    guest_state: &'a mut GuestState,
+}
+
+impl<'a> UiCommandContext<'a> {
+    pub fn new(
+        data: &'a GameData,
+        selected_station: &'a mut Option<String>,
+        game_state: &'a mut GameState,
+        progression: &'a mut ProgressionState,
+        guest_state: &'a mut GuestState,
+    ) -> Self {
+        Self {
+            data,
+            selected_station,
+            game_state,
+            progression,
+            guest_state,
+        }
+    }
+}
+
 pub fn read_title_action(ui_hits: &TitleActions) -> Option<TitleAction> {
     ui_hits.released_action()
 }
@@ -90,130 +116,151 @@ pub fn read_input_action(ui_hits: UiActions) -> Option<UiCommand> {
         })
 }
 
-pub fn apply_ui_command(
-    command: UiCommand,
-    data: &GameData,
-    selected_station: &mut Option<String>,
-    game_state: &mut GameState,
-    progression_state: &mut ProgressionState,
-    guest_state: &mut GuestState,
-) {
+pub fn apply_ui_command(command: UiCommand, mut context: UiCommandContext<'_>) {
     match command {
         UiCommand::StartCooking(station_color) => {
             start_station_with_player(
                 &station_color,
-                data,
-                progression_state,
-                selected_station,
-                game_state,
+                context.data,
+                context.progression,
+                context.selected_station,
+                context.game_state,
             );
         }
         UiCommand::SelectDish(station_color) => {
-            select_station_with_player(station_color, data, selected_station, game_state);
+            select_station_with_player(
+                station_color,
+                context.data,
+                context.selected_station,
+                context.game_state,
+            );
         }
         UiCommand::Serve(customer_id) => {
-            serve_selected_customer(
-                customer_id,
-                data,
-                selected_station,
-                game_state,
-                progression_state,
-                guest_state,
-            );
+            serve_selected_customer(customer_id, &mut context);
         }
         UiCommand::InviteVip(customer_id) => {
-            invite_selected_customer(
-                customer_id,
-                data,
-                selected_station,
-                game_state,
-                progression_state,
-                guest_state,
-            );
+            invite_selected_customer(customer_id, &mut context);
         }
         UiCommand::BuyUpgrade(upgrade_id) => {
-            let cost = progression_state
-                .upgrades
-                .iter()
-                .find(|upgrade| upgrade.id == upgrade_id)
-                .map(|upgrade| upgrade.cost)
-                .unwrap_or(0);
-            if progression_state.buy_upgrade(&upgrade_id) {
-                game_state.add_message(data.text_format(
-                    "message_upgrade_bought",
-                    [("upgrade", upgrade_id.clone())].as_slice(),
-                ));
-                game_state.floaters.spawn(
-                    data.text_format(
-                        "message_upgrade_floater",
-                        [("cost", cost.to_string())].as_slice(),
-                    ),
-                    crate::state::FloaterKind::Cash,
-                    crate::state::FloaterAnchor::Header,
-                );
-            } else {
-                game_state.add_message(data.text_format(
-                    "message_upgrade_unavailable",
-                    [("upgrade", upgrade_id)].as_slice(),
-                ));
-            }
+            buy_upgrade(upgrade_id, &mut context);
         }
         UiCommand::CraftRecipe(recipe_id) => {
-            craft_recipe(&recipe_id, data, game_state, progression_state);
+            craft_recipe(
+                &recipe_id,
+                context.data,
+                context.game_state,
+                context.progression,
+            );
         }
         UiCommand::AttractCustomer(customer_type_id) => {
-            attract_customer_type(&customer_type_id, data, game_state, progression_state);
+            attract_customer_type(
+                &customer_type_id,
+                context.data,
+                context.game_state,
+                context.progression,
+            );
         }
         UiCommand::Prestige => {
-            try_prestige(data, progression_state, game_state);
+            try_prestige(context.data, context.progression, context.game_state);
         }
         UiCommand::ClearSelection => {
-            *selected_station = None;
-            clear_player_carry(data, game_state);
+            *context.selected_station = None;
+            clear_player_carry(context.data, context.game_state);
         }
         UiCommand::ToggleGuestInfo(customer_id) => {
-            game_state.selected_guest_id =
-                (game_state.selected_guest_id != Some(customer_id)).then_some(customer_id);
+            context.game_state.selected_guest_id =
+                (context.game_state.selected_guest_id != Some(customer_id)).then_some(customer_id);
         }
         UiCommand::TutorialNext => {
-            game_state.tutorial.advance(&data.tutorial_steps);
+            context
+                .game_state
+                .tutorial
+                .advance(&context.data.tutorial_steps);
         }
         UiCommand::TutorialSkip => {
-            game_state.tutorial.skip();
-            game_state.add_message(data.text("message_tutorial_skipped"));
+            context.game_state.tutorial.skip();
+            context
+                .game_state
+                .add_message(context.data.text("message_tutorial_skipped"));
         }
         UiCommand::ChooseSpecialization(specialization_id) => {
-            let Some(def) = data.specialization_by_id(&specialization_id) else {
-                return;
-            };
-            if progression_state.choose_specialization(def) {
-                game_state.add_message(format!("The house is now {}. {}", def.name, def.flavor));
-                game_state.floaters.spawn(
-                    data.text_format(
-                        "message_house_style_floater",
-                        [("style", def.name.clone())].as_slice(),
-                    ),
-                    crate::state::FloaterKind::Renown,
-                    crate::state::FloaterAnchor::Header,
-                );
-            }
+            choose_specialization(&specialization_id, &mut context);
         }
         UiCommand::ToggleClienteleBoard => {
-            game_state.show_clientele_board = !game_state.show_clientele_board;
+            context.game_state.show_clientele_board = !context.game_state.show_clientele_board;
         }
         UiCommand::ChoosePrestigePerk(perk_id) => {
-            crate::gameplay::confirm_prestige(&perk_id, data, game_state, progression_state);
+            crate::gameplay::confirm_prestige(
+                &perk_id,
+                context.data,
+                context.game_state,
+                context.progression,
+            );
         }
         UiCommand::StartNextDay => {
-            let next_day = game_state.day_cycle.day.saturating_add(1);
-            let next_goal = crate::engine::select_next_day_goal(data, next_day, progression_state);
-            game_state.day_cycle.start_next_day(next_goal.id);
-            game_state.add_message(data.text_format(
-                "message_day_start",
-                [("day", game_state.day_cycle.day.to_string())].as_slice(),
-            ));
+            start_next_day(&mut context);
         }
     }
+}
+
+fn buy_upgrade(upgrade_id: String, context: &mut UiCommandContext<'_>) {
+    let cost = context
+        .progression
+        .upgrades
+        .iter()
+        .find(|upgrade| upgrade.id == upgrade_id)
+        .map(|upgrade| upgrade.cost)
+        .unwrap_or(0);
+    if context.progression.buy_upgrade(&upgrade_id) {
+        context.game_state.add_message(context.data.text_format(
+            "message_upgrade_bought",
+            [("upgrade", upgrade_id.clone())].as_slice(),
+        ));
+        context.game_state.floaters.spawn(
+            context.data.text_format(
+                "message_upgrade_floater",
+                [("cost", cost.to_string())].as_slice(),
+            ),
+            crate::state::FloaterKind::Cash,
+            crate::state::FloaterAnchor::Header,
+        );
+    } else {
+        context.game_state.add_message(context.data.text_format(
+            "message_upgrade_unavailable",
+            [("upgrade", upgrade_id)].as_slice(),
+        ));
+    }
+}
+
+fn choose_specialization(id: &str, context: &mut UiCommandContext<'_>) {
+    let Some(def) = context.data.specialization_by_id(id) else {
+        return;
+    };
+    if context.progression.choose_specialization(def) {
+        context.game_state.add_message(context.data.text_format(
+            "message_house_style_selected",
+            [("style", def.name.clone()), ("flavor", def.flavor.clone())].as_slice(),
+        ));
+        context.game_state.floaters.spawn(
+            context.data.text_format(
+                "message_house_style_floater",
+                [("style", def.name.clone())].as_slice(),
+            ),
+            crate::state::FloaterKind::Renown,
+            crate::state::FloaterAnchor::Header,
+        );
+    }
+}
+
+fn start_next_day(context: &mut UiCommandContext<'_>) {
+    let next_day = context.game_state.day_cycle.day.saturating_add(1);
+    let next_goal =
+        crate::engine::select_next_day_goal(context.data, next_day, context.progression);
+    context.game_state.day_cycle.start_next_day(next_goal.id);
+    context.game_state.add_message(context.data.text_format(
+        "message_day_start",
+        [("day", context.game_state.day_cycle.day.to_string())].as_slice(),
+    ));
 }
 
 pub fn handle_keyboard_shortcuts(
@@ -279,52 +326,52 @@ pub fn clear_empty_selection(
     }
 }
 
-fn serve_selected_customer(
-    customer_id: u32,
-    data: &GameData,
-    selected_station: &mut Option<String>,
-    game_state: &mut GameState,
-    progression_state: &mut ProgressionState,
-    guest_state: &mut GuestState,
-) {
-    if let Some(station_color) = selected_station.clone() {
+fn serve_selected_customer(customer_id: u32, context: &mut UiCommandContext<'_>) {
+    if let Some(station_color) = context.selected_station.clone() {
         if serve_customer(
             &station_color,
             customer_id,
-            data,
-            game_state,
-            progression_state,
-            guest_state,
+            context.data,
+            context.game_state,
+            context.progression,
+            context.guest_state,
         ) {
-            send_player_to_customer(customer_id, &station_color, data, game_state);
-            *selected_station = None;
+            send_player_to_customer(
+                customer_id,
+                &station_color,
+                context.data,
+                context.game_state,
+            );
+            *context.selected_station = None;
         }
     } else {
-        game_state.add_message("Select a cooked dish first.".to_string());
+        context
+            .game_state
+            .add_message(context.data.text("message_select_dish"));
     }
 }
 
-fn invite_selected_customer(
-    customer_id: u32,
-    data: &GameData,
-    selected_station: &mut Option<String>,
-    game_state: &mut GameState,
-    progression_state: &mut ProgressionState,
-    guest_state: &mut GuestState,
-) {
-    let player_target = player_target_for_customer(customer_id, game_state);
+fn invite_selected_customer(customer_id: u32, context: &mut UiCommandContext<'_>) {
+    let player_target = player_target_for_customer(customer_id, context.game_state);
     if invite_customer_to_vip(
         customer_id,
-        data,
-        game_state,
-        progression_state,
-        guest_state,
+        context.data,
+        context.game_state,
+        context.progression,
+        context.guest_state,
     ) {
         if let Some((x, y)) = player_target {
-            set_player_target(game_state, x, y, "VIP", None, false);
+            set_player_target(
+                context.game_state,
+                x,
+                y,
+                context.data.text("task_vip"),
+                None,
+                false,
+            );
         }
-        *selected_station = None;
-        clear_player_carry(data, game_state);
+        *context.selected_station = None;
+        clear_player_carry(context.data, context.game_state);
     }
 }
 

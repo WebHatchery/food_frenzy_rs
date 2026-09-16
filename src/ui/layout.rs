@@ -21,6 +21,11 @@ use std::collections::HashMap;
 fn draw_top_header(data: &GameData, game: &GameState, progression: &ProgressionState) {
     let width = screen_width();
     let bar = Rect::new(8.0, 8.0, width - 16.0, 70.0);
+    draw_header_frame(bar);
+    draw_header_tiles(bar, data, game, progression);
+}
+
+fn draw_header_frame(bar: Rect) {
     draw_rectangle(
         bar.x,
         bar.y,
@@ -37,11 +42,13 @@ fn draw_top_header(data: &GameData, game: &GameState, progression: &ProgressionS
         1.0,
         GOLD,
     );
+}
 
+fn draw_header_tiles(bar: Rect, data: &GameData, game: &GameState, progression: &ProgressionState) {
     let vip = if game.special_table_busy {
         format!("{:.0}s", (game.special_table_timer / 1000.0).max(0.0))
     } else {
-        "ready".to_string()
+        data.text("ui_ready").to_string()
     };
     let meat_total: i64 = game
         .ingredients

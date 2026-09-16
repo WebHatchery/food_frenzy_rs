@@ -20,16 +20,6 @@ pub(super) const GOLD: Color = Color::new(0.84, 0.60, 0.31, 1.0);
 pub(super) const ACCENT: Color = Color::new(0.40, 0.64, 0.92, 1.0);
 pub(super) const SUCCESS: Color = Color::new(0.48, 0.78, 0.43, 1.0);
 
-fn station_label(color: &str) -> &'static str {
-    match color {
-        "blue" => "Blue",
-        "green" => "Green",
-        "yellow" => "Yellow",
-        "red" => "Red",
-        _ => "Dish",
-    }
-}
-
 pub(super) fn station_draw_color(color: &str) -> Color {
     match color {
         "blue" => SKYBLUE,
@@ -43,7 +33,7 @@ pub(super) fn station_draw_color(color: &str) -> Color {
 pub(super) fn dish_label(data: &GameData, color: &str) -> String {
     data.dish_type_by_color(color)
         .map(|dish| dish.name.clone())
-        .unwrap_or_else(|| station_label(color).to_string())
+        .unwrap_or_else(|| data.text("ui_dish_unknown").to_string())
 }
 
 pub(super) fn ellipsize(text: &str, max_chars: usize) -> String {
@@ -240,9 +230,9 @@ pub(super) fn sorted_ingredient_lines(game: &GameState) -> Vec<String> {
     ingredients
 }
 
-pub(super) fn format_unlock_cost(cost: &HashMap<String, i64>) -> String {
+pub(super) fn format_unlock_cost(data: &GameData, cost: &HashMap<String, i64>) -> String {
     if cost.is_empty() {
-        return "Open".to_string();
+        return data.text("ui_open").to_string();
     }
 
     let mut parts: Vec<_> = cost

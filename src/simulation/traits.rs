@@ -206,9 +206,12 @@ fn resolve_alert(
             if let Some((station_color, dish_name)) = steal_dish(game_state) {
                 let station_name = dish_display_name(data, &station_color);
                 game_state.combo = 0;
-                game_state
-                    .floaters
-                    .spawn_at("tantrum! combo lost", FloaterKind::Alert, x, y);
+                game_state.floaters.spawn_at(
+                    data.text("ui_tantrum_floater"),
+                    FloaterKind::Alert,
+                    x,
+                    y,
+                );
                 game_state.add_message(
                     data.text_format(
                         "message_trait_threw",

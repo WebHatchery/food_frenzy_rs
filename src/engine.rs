@@ -20,6 +20,16 @@ pub fn max_customer_count(data: &GameData, progression: &ProgressionState) -> us
     total as usize
 }
 
+pub fn highest_unlocked_customer_tier(data: &GameData, progression: &ProgressionState) -> u32 {
+    data.customer_types
+        .iter()
+        .filter(|customer_type| progression.is_customer_unlocked(&customer_type.id))
+        .map(|customer_type| customer_type.profile_tier)
+        .max()
+        .unwrap_or(1)
+        .max(1)
+}
+
 /// Choose the next ledger objective from the content catalog. The index is
 /// derived from run state rather than wall-clock randomness, so a save/load
 /// cycle cannot silently change the promise shown to the player.
@@ -48,13 +58,7 @@ pub fn select_next_day_goal(data: &GameData, day: u32, progression: &Progression
         .or_else(|| candidates.first())
         .cloned()
         .cloned()
-        .unwrap_or_else(|| GoalDef {
-            id: "steady-service".to_string(),
-            title: "A steady hand".to_string(),
-            description: "Serve a good shift for the house.".to_string(),
-            min_day: 1,
-            kind: GoalKind::ServeCourses { target: 1 },
-        })
+        .unwrap_or_else(|| data.goals.first().cloned().expect("validated goal catalog"))
 }
 
 pub fn spawn_interval_ms(data: &GameData, progression: &ProgressionState) -> f32 {

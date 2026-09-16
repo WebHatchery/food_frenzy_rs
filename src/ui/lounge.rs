@@ -196,10 +196,12 @@ fn draw_reveal(cinematic: &ProcessingCinematic, stage: Rect, progress: f32, data
         Color::new(TEXT.r, TEXT.g, TEXT.b, appear),
     );
 
-    let farewell = cinematic
-        .farewell
-        .clone()
-        .unwrap_or_else(|| format!("{} has joined the menu.", cinematic.guest_name));
+    let farewell = cinematic.farewell.clone().unwrap_or_else(|| {
+        data.text_format(
+            "message_lounge_joined",
+            [("name", cinematic.guest_name.clone())].as_slice(),
+        )
+    });
     let farewell_dim = measure_ui_text(&farewell, None, 16, 1.0);
     draw_ui_text(
         &farewell,
