@@ -1,3 +1,5 @@
+//! Kitchen stations, cooking controls, and the carried-dish affordance.
+
 use super::actors::draw_player_actor_scaled;
 use super::common::{
     dish_label, draw_bar, draw_button, draw_centered_section_title, draw_panel, draw_row_value,
@@ -33,7 +35,12 @@ pub(super) fn draw_kitchen(
     draw_panel(panel);
     draw_centered_section_title("Kitchen", panel);
 
-    let hero_h = (panel.h * 0.22).clamp(124.0, 150.0);
+    let compact = panel.h < 500.0 || panel.w < 240.0;
+    let hero_h = if compact {
+        (panel.h * 0.20).clamp(64.0, 92.0)
+    } else {
+        (panel.h * 0.22).clamp(124.0, 150.0)
+    };
     let hero = Rect::new(panel.x + 14.0, panel.y + 44.0, panel.w - 28.0, hero_h);
     draw_kitchen_hero(hero, game, data, interior_sheet);
 
@@ -60,11 +67,15 @@ pub(super) fn draw_kitchen(
         Rect::new(panel.x, title_y - 28.0, panel.w, 36.0),
     );
 
-    let row_gap = 8.0;
-    let clear_h = 40.0;
+    let row_gap = if compact { 4.0 } else { 8.0 };
+    let clear_h = if compact { 30.0 } else { 40.0 };
     let start_y = title_y + 14.0;
     let available_h = panel.y + panel.h - clear_h - 18.0 - start_y;
-    let row_h = ((available_h - row_gap * 3.0) / 4.0).clamp(60.0, 96.0);
+    let row_h = if compact {
+        ((available_h - row_gap * 3.0) / 4.0).clamp(34.0, 68.0)
+    } else {
+        ((available_h - row_gap * 3.0) / 4.0).clamp(60.0, 96.0)
+    };
     let mut y = start_y;
     for color in STATION_COLORS {
         if let Some(station) = game.cooking_stations.get(color) {

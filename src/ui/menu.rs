@@ -1,3 +1,5 @@
+//! Title and settings screens, including their touch-sized hit targets.
+
 use super::common::{draw_menu_button, BACKGROUND, MUTED, PANEL, TEXT};
 use super::types::{SettingsActions, TitleActions};
 use macroquad::prelude::*;

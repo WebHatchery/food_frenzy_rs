@@ -29,9 +29,16 @@ pub(super) fn draw_prestige_modal(game: &GameState, data: &GameData, ui: &mut Ui
     ui.modal_open = true;
 
     let count = data.prestige_perks.len().min(4);
-    let total_w = CARD_W * count as f32 + CARD_GAP * (count as f32 - 1.0);
+    let columns = count.min(if width < 1100.0 { 2 } else { 4 }).max(1);
+    let card_w = ((width - 32.0 - CARD_GAP * (columns as f32 - 1.0)) / columns as f32)
+        .min(CARD_W)
+        .max(180.0);
+    let card_h = (height - 96.0).clamp(160.0, CARD_H);
+    let total_w = card_w * columns as f32 + CARD_GAP * (columns as f32 - 1.0);
     let start_x = width * 0.5 - total_w * 0.5;
-    let top = height * 0.5 - CARD_H * 0.5;
+    let rows = count.div_ceil(columns);
+    let total_h = card_h * rows as f32 + CARD_GAP * (rows as f32 - 1.0);
+    let top = height * 0.5 - total_h * 0.5;
 
     let headline = "PRESTIGE - WHAT SURVIVES THE RESET?";
     let headline_dim = measure_ui_text(headline, None, 24, 1.0);
@@ -44,11 +51,13 @@ pub(super) fn draw_prestige_modal(game: &GameState, data: &GameData, ui: &mut Ui
     );
 
     for (index, perk) in data.prestige_perks.iter().take(count).enumerate() {
+        let column = index % columns;
+        let row = index / columns;
         let card = Rect::new(
-            start_x + index as f32 * (CARD_W + CARD_GAP),
-            top,
-            CARD_W,
-            CARD_H,
+            start_x + column as f32 * (card_w + CARD_GAP),
+            top + row as f32 * (card_h + CARD_GAP),
+            card_w,
+            card_h,
         );
         let hovered = card.contains(vec2(mouse_position().0, mouse_position().1));
         draw_rectangle(

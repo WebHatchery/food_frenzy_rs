@@ -1,3 +1,5 @@
+//! Dining-floor composition: tables, guests, service prompts, and clock.
+
 mod room;
 
 use super::actors::{draw_customer_sprite, draw_player_actor};

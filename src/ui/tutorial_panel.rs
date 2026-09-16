@@ -21,14 +21,15 @@ pub(super) fn draw_tutorial_panel(
         return;
     };
 
-    let lines = wrap_text(&step.body, PANEL_W - 28.0, BODY_FONT);
+    let panel_w = PANEL_W.min((floor.w - 16.0).max(180.0));
+    let lines = wrap_text(&step.body, panel_w - 28.0, BODY_FONT);
     let needs_ack = step.trigger == TutorialTrigger::Acknowledged;
     let body_h = lines.len() as f32 * 20.0;
     let panel_h = 64.0 + body_h + if needs_ack { 40.0 } else { 12.0 };
     let panel = Rect::new(
-        floor.x + (floor.w - PANEL_W) * 0.5,
+        floor.x + (floor.w - panel_w) * 0.5,
         floor.y + 10.0,
-        PANEL_W,
+        panel_w,
         panel_h,
     );
 

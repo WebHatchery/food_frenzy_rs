@@ -1,3 +1,5 @@
+//! Responsive playing-screen layout and top-level UI composition.
+
 use super::clientele_board::draw_clientele_board;
 use super::common::{draw_resource_tile, draw_tooltip, BACKGROUND, GOLD, LINE};
 use super::day_summary::draw_day_summary;
@@ -136,27 +138,31 @@ fn layout_rects(width: f32, height: f32) -> (Rect, Rect, Rect, Rect) {
     let header_h = 78.0;
     let footer_h = 56.0;
     let gap = 8.0;
-    let min_floor_w = 420.0;
-    let preferred_side_w = (width * 0.225).clamp(320.0, 420.0);
-    let side_budget = (width - margin * 2.0 - gap * 2.0 - min_floor_w).max(0.0) * 0.5;
-    let side_w = preferred_side_w.min(side_budget).clamp(260.0, 420.0);
+    let content_w = (width - margin * 2.0 - gap * 2.0).max(0.0);
+    let side_w = if width < 972.0 {
+        (content_w * 0.28).clamp(150.0, 240.0)
+    } else {
+        (width * 0.225).clamp(320.0, 420.0)
+    };
     let left_w = side_w;
     let right_w = side_w;
     let main_y = margin + header_h;
-    let main_h = (height - main_y - footer_h - margin).max(520.0);
+    let main_h = (height - main_y - footer_h - margin).max(0.0);
     let left = Rect::new(margin, main_y, left_w, main_h);
-    let right = Rect::new(width - margin - right_w, main_y, right_w, main_h);
+    let right_x = (width - margin - right_w).max(left.x + left.w + gap);
+    let right = Rect::new(right_x, main_y, right_w, main_h);
     let floor = Rect::new(
         left.x + left.w + gap,
         main_y,
-        (right.x - left.x - left.w - gap * 2.0).max(min_floor_w),
+        (right.x - left.x - left.w - gap * 2.0).max(1.0),
         main_h,
     );
+    let feed_y = (height - footer_h + 8.0).max(main_y + main_h + 4.0);
     let feed = Rect::new(
         margin,
-        height - footer_h + 8.0,
+        feed_y,
         width - margin * 2.0,
-        footer_h - 14.0,
+        (height - feed_y).max(0.0),
     );
     (left, floor, right, feed)
 }

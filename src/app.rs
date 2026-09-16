@@ -356,7 +356,7 @@ impl App {
             .is_some_and(|cinematic| {
                 cinematic.finished()
                     || (cinematic.can_dismiss()
-                        && (is_mouse_button_pressed(MouseButton::Left)
+                        && (is_mouse_button_released(MouseButton::Left)
                             || is_key_pressed(KeyCode::Space)
                             || is_key_pressed(KeyCode::Enter)))
             });

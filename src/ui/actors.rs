@@ -1,3 +1,5 @@
+//! Guest and chef actors with accessible status, order, and interaction cues.
+
 use super::common::{
     customer_fallback_color, dish_label, draw_bar, draw_button, draw_tooltip, ellipsize,
     floor_to_screen, player_near_customer, station_draw_color, GOLD, LINE, TEXT,

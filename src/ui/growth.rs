@@ -1,3 +1,5 @@
+//! Progression, clientele, pantry, recipes, prestige, and event-feed panels.
+
 use super::common::{
     can_afford_cost, draw_button, draw_card, draw_centered_section_title, draw_panel,
     draw_row_value, ellipsize, format_unlock_cost, sorted_ingredient_lines, station_draw_color,

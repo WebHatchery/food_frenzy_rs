@@ -1,4 +1,7 @@
+//! UI hitbox records and semantic actions shared by rendering and input.
+
 use macroquad::prelude::*;
+use macroquad_toolkit::input::was_clicked_rect;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Default)]
@@ -53,6 +56,20 @@ impl TitleActions {
             None
         }
     }
+
+    pub fn released_action(&self) -> Option<TitleAction> {
+        if was_clicked_rect(self.new_game) {
+            Some(TitleAction::NewGame)
+        } else if was_clicked_rect(self.load_game) {
+            Some(TitleAction::LoadGame)
+        } else if was_clicked_rect(self.settings) {
+            Some(TitleAction::Settings)
+        } else if was_clicked_rect(self.exit) {
+            Some(TitleAction::Exit)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -76,6 +93,18 @@ impl SettingsActions {
         } else if self.sound_toggle.contains(point) {
             Some(SettingsAction::ToggleSound)
         } else if self.back.contains(point) {
+            Some(SettingsAction::Back)
+        } else {
+            None
+        }
+    }
+
+    pub fn released_action(&self) -> Option<SettingsAction> {
+        if was_clicked_rect(self.fullscreen_toggle) {
+            Some(SettingsAction::ToggleFullscreen)
+        } else if was_clicked_rect(self.sound_toggle) {
+            Some(SettingsAction::ToggleSound)
+        } else if was_clicked_rect(self.back) {
             Some(SettingsAction::Back)
         } else {
             None

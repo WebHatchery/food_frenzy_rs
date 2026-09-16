@@ -41,8 +41,8 @@ pub(super) fn draw_clientele_board(
             .then_with(|| left.name.cmp(&right.name))
     });
 
-    let board_w = (width * 0.56).clamp(640.0, 860.0);
-    let board_h = (types.len() as f32 * ROW_H + 96.0).min(height - 60.0);
+    let board_w = (width - 24.0).clamp(280.0, 860.0);
+    let board_h = (types.len() as f32 * ROW_H + 96.0).min((height - 24.0).max(160.0));
     let board = Rect::new(
         width * 0.5 - board_w * 0.5,
         height * 0.5 - board_h * 0.5,

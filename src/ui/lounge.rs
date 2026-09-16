@@ -26,7 +26,14 @@ pub(super) fn draw_processing_overlay(game: &GameState) {
     };
     draw_rectangle(0.0, 0.0, width, height, Color::new(0.01, 0.008, 0.012, dim));
 
-    let stage = Rect::new(width * 0.5 - 290.0, height * 0.5 - 180.0, 580.0, 360.0);
+    let stage_w = (width - 24.0).clamp(300.0, 580.0);
+    let stage_h = (height - 24.0).clamp(240.0, 360.0);
+    let stage = Rect::new(
+        width * 0.5 - stage_w * 0.5,
+        height * 0.5 - stage_h * 0.5,
+        stage_w,
+        stage_h,
+    );
     match phase {
         CinematicPhase::Escort => draw_escort(cinematic, progress, width, height),
         CinematicPhase::Curtain => {

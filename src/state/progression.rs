@@ -1,3 +1,5 @@
+//! Persistent unlocks, upgrades, regular progression, and prestige effects.
+
 use super::ProgressionState;
 use crate::data::GameData;
 use std::collections::HashMap;

@@ -13,6 +13,7 @@ use crate::player::{
 use crate::state::{GameState, GuestState, ProgressionState};
 use crate::ui::{SettingsAction, SettingsActions, TitleAction, TitleActions, UiActions};
 use macroquad::prelude::*;
+use macroquad_toolkit::input::was_clicked_rect;
 
 #[derive(Clone)]
 pub enum UiCommand {
@@ -34,81 +35,53 @@ pub enum UiCommand {
 }
 
 pub fn read_title_action(ui_hits: &TitleActions) -> Option<TitleAction> {
-    if !is_mouse_button_pressed(MouseButton::Left) {
-        return None;
-    }
-
-    ui_hits.action_at(vec2(mouse_position().0, mouse_position().1))
+    ui_hits.released_action()
 }
 
 pub fn read_settings_action(ui_hits: &SettingsActions) -> Option<SettingsAction> {
-    if !is_mouse_button_pressed(MouseButton::Left) {
-        return None;
-    }
-
-    ui_hits.action_at(vec2(mouse_position().0, mouse_position().1))
+    ui_hits.released_action()
 }
 
 pub fn read_input_action(ui_hits: UiActions) -> Option<UiCommand> {
-    if !is_mouse_button_pressed(MouseButton::Left) {
-        return None;
-    }
-
-    let click = vec2(mouse_position().0, mouse_position().1);
     // Modal overlays first: they cover the rest of the screen.
-    if ui_hits
-        .day_next_button
-        .is_some_and(|rect| rect.contains(click))
-    {
+    if ui_hits.day_next_button.is_some_and(was_clicked_rect) {
         return Some(UiCommand::StartNextDay);
     }
-    if let Some(id) = find_map_hit(ui_hits.prestige_perk_buttons, click) {
+    if let Some(id) = find_map_hit(ui_hits.prestige_perk_buttons) {
         return Some(UiCommand::ChoosePrestigePerk(id));
     }
-    if let Some(id) = find_map_hit(ui_hits.specialization_buttons, click) {
+    if let Some(id) = find_map_hit(ui_hits.specialization_buttons) {
         return Some(UiCommand::ChooseSpecialization(id));
     }
-    if ui_hits
-        .clientele_board_toggle
-        .is_some_and(|rect| rect.contains(click))
-    {
+    if ui_hits.clientele_board_toggle.is_some_and(was_clicked_rect) {
         return Some(UiCommand::ToggleClienteleBoard);
     }
     if ui_hits.modal_open {
         // Overlay owns the screen: only its attract buttons remain live.
-        return find_map_hit(ui_hits.attract_buttons, click).map(UiCommand::AttractCustomer);
+        return find_map_hit(ui_hits.attract_buttons).map(UiCommand::AttractCustomer);
     }
-    if ui_hits
-        .tutorial_next
-        .is_some_and(|rect| rect.contains(click))
-    {
+    if ui_hits.tutorial_next.is_some_and(was_clicked_rect) {
         return Some(UiCommand::TutorialNext);
     }
-    if ui_hits
-        .tutorial_skip
-        .is_some_and(|rect| rect.contains(click))
-    {
+    if ui_hits.tutorial_skip.is_some_and(was_clicked_rect) {
         return Some(UiCommand::TutorialSkip);
     }
-    if ui_hits
-        .clear_selection
-        .is_some_and(|rect| rect.contains(click))
-    {
+    if ui_hits.clear_selection.is_some_and(was_clicked_rect) {
         return Some(UiCommand::ClearSelection);
     }
 
-    find_vec_hit(ui_hits.station_select, click)
+    find_vec_hit(ui_hits.station_select)
         .map(UiCommand::SelectDish)
-        .or_else(|| find_vec_hit(ui_hits.station_cook, click).map(UiCommand::StartCooking))
-        .or_else(|| find_map_hit(ui_hits.serve_customer, click).map(UiCommand::Serve))
-        .or_else(|| find_map_hit(ui_hits.invite_customer, click).map(UiCommand::InviteVip))
-        .or_else(|| find_map_hit(ui_hits.upgrade_buttons, click).map(UiCommand::BuyUpgrade))
-        .or_else(|| find_map_hit(ui_hits.recipe_buttons, click).map(UiCommand::CraftRecipe))
-        .or_else(|| find_map_hit(ui_hits.attract_buttons, click).map(UiCommand::AttractCustomer))
+        .or_else(|| find_vec_hit(ui_hits.station_cook).map(UiCommand::StartCooking))
+        .or_else(|| find_map_hit(ui_hits.serve_customer).map(UiCommand::Serve))
+        .or_else(|| find_map_hit(ui_hits.invite_customer).map(UiCommand::InviteVip))
+        .or_else(|| find_map_hit(ui_hits.upgrade_buttons).map(UiCommand::BuyUpgrade))
+        .or_else(|| find_map_hit(ui_hits.recipe_buttons).map(UiCommand::CraftRecipe))
+        .or_else(|| find_map_hit(ui_hits.attract_buttons).map(UiCommand::AttractCustomer))
         .or_else(|| {
             ui_hits
                 .prestige_button
-                .filter(|rect| rect.contains(click))
+                .filter(|rect| was_clicked_rect(*rect))
                 .map(|_| UiCommand::Prestige)
         })
 }
@@ -329,17 +302,17 @@ fn invite_selected_customer(
     }
 }
 
-fn find_vec_hit(values: Vec<(String, Rect)>, click: Vec2) -> Option<String> {
+fn find_vec_hit(values: Vec<(String, Rect)>) -> Option<String> {
     values
         .into_iter()
-        .find(|(_, rect)| rect.contains(click))
+        .find(|(_, rect)| was_clicked_rect(*rect))
         .map(|(value, _)| value)
 }
 
-fn find_map_hit<K>(values: std::collections::HashMap<K, Rect>, click: Vec2) -> Option<K> {
+fn find_map_hit<K>(values: std::collections::HashMap<K, Rect>) -> Option<K> {
     values
         .into_iter()
-        .find(|(_, rect)| rect.contains(click))
+        .find(|(_, rect)| was_clicked_rect(*rect))
         .map(|(value, _)| value)
 }
 

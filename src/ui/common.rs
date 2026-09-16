@@ -1,3 +1,5 @@
+//! Shared drawing primitives, colors, labels, hit-target sizing, and meters.
+
 use crate::data::GameData;
 use crate::engine::{
     patience_multiplier, KITCHEN_SERVICE_LEFT, RESTAURANT_FLOOR_HEIGHT, RESTAURANT_FLOOR_WIDTH,

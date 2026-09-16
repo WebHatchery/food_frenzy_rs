@@ -33,7 +33,14 @@ pub(super) fn draw_day_summary(
     );
     ui.modal_open = true;
 
-    let panel = Rect::new(width * 0.5 - 270.0, height * 0.5 - 250.0, 540.0, 500.0);
+    let panel_w = (width - 24.0).clamp(280.0, 540.0);
+    let panel_h = (height - 24.0).clamp(220.0, 500.0);
+    let panel = Rect::new(
+        width * 0.5 - panel_w * 0.5,
+        height * 0.5 - panel_h * 0.5,
+        panel_w,
+        panel_h,
+    );
     draw_rectangle(
         panel.x,
         panel.y,
@@ -84,18 +91,38 @@ pub(super) fn draw_day_summary(
         ("Fresh dishes", stats.fresh_dishes.to_string(), TEXT),
         ("Best combo", format!("x{}", stats.best_combo), TEXT),
     ];
+    let compact = panel_h < 450.0;
     let mut y = panel.y + 88.0;
-    for (label, value, color) in rows {
-        draw_ui_text(label, panel.x + 36.0, y, 16.0, MUTED);
-        let value_dim = measure_ui_text(&value, None, 16, 1.0);
-        draw_ui_text(
-            &value,
-            panel.x + panel.w - 36.0 - value_dim.width,
-            y,
-            16.0,
-            color,
-        );
-        y += 28.0;
+    if compact {
+        for (index, (label, value, color)) in rows.iter().enumerate() {
+            let column = index / 4;
+            let row = index % 4;
+            let x = panel.x + 26.0 + column as f32 * (panel.w * 0.5 - 12.0);
+            let row_y = y + row as f32 * 25.0;
+            draw_ui_text(label, x, row_y, 13.0, MUTED);
+            let value_dim = measure_ui_text(value, None, 13, 1.0);
+            draw_ui_text(
+                value,
+                x + panel.w * 0.5 - 38.0 - value_dim.width,
+                row_y,
+                13.0,
+                *color,
+            );
+        }
+        y += 4.0 * 25.0 + 10.0;
+    } else {
+        for (label, value, color) in rows {
+            draw_ui_text(label, panel.x + 36.0, y, 16.0, MUTED);
+            let value_dim = measure_ui_text(&value, None, 16, 1.0);
+            draw_ui_text(
+                &value,
+                panel.x + panel.w - 36.0 - value_dim.width,
+                y,
+                16.0,
+                color,
+            );
+            y += 28.0;
+        }
     }
 
     draw_line(panel.x + 24.0, y, panel.x + panel.w - 24.0, y, 1.0, LINE);
