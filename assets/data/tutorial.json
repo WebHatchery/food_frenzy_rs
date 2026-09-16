@@ -8,19 +8,19 @@
   {
     "id": "cook",
     "title": "Fire up a station",
-    "body": "Click a kitchen station (or press 1-4) that matches an ordered course color to start cooking.",
+    "body": "Tap the visible Cook button on a kitchen station (or press 1-4) that matches an ordered course color to start cooking.",
     "trigger": "cooking_started"
   },
   {
     "id": "carry",
     "title": "Carry the dish",
-    "body": "When the dish is plated, click it to pick it up and carry it to the floor.",
+    "body": "When the dish is plated, tap it to pick it up and carry it to the floor.",
     "trigger": "dish_carried"
   },
   {
     "id": "serve",
     "title": "Serve the course",
-    "body": "Click Serve on the guest who ordered it. Preferred dishes (their colored dots) pay double.",
+    "body": "Tap Serve on the guest who ordered it. Preferred dishes (their colored dots) pay double.",
     "trigger": "course_served"
   },
   {
@@ -38,7 +38,7 @@
   {
     "id": "invite",
     "title": "The Last Meal Lounge",
-    "body": "Click VIP on a plump, seated guest to invite them into the Lounge for their final course.",
+    "body": "Tap VIP on a plump, seated guest to invite them into the Lounge for their final course.",
     "trigger": "guest_processed"
   },
   {

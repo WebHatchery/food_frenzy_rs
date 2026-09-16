@@ -403,7 +403,10 @@ fn regulars_events_and_perks_are_well_formed() {
         );
     }
 
-    assert!(data.dining_events.len() >= 3, "need event variety");
+    assert!(
+        data.dining_events.len() >= 6,
+        "need event variety beyond the starter set"
+    );
     assert_unique_ids(
         "dining event",
         &data
@@ -419,8 +422,8 @@ fn regulars_events_and_perks_are_well_formed() {
     }
 
     assert!(
-        data.prestige_perks.len() >= 3,
-        "prestige needs a real choice"
+        data.prestige_perks.len() >= 6,
+        "prestige needs a real choice beyond the starter set"
     );
     assert_unique_ids(
         "prestige perk",
@@ -435,6 +438,29 @@ fn regulars_events_and_perks_are_well_formed() {
     assert!(data.balance.regular_visits_threshold >= 1);
     assert!(data.balance.regular_yield_multiplier >= 1.0);
     assert!(data.balance.prestige_requirement_growth >= 1.0);
+}
+
+#[test]
+fn fifth_clientele_tier_has_a_complete_content_path() {
+    let data = parsed();
+    let dragon = data
+        .customer_type_by_id("dragon")
+        .expect("fifth-tier dragon clientele is part of the content contract");
+    assert_eq!(dragon.profile_tier, 5);
+    assert!(!dragon.unlock_cost.is_empty());
+    assert!(dragon
+        .unlock_cost
+        .keys()
+        .all(|ingredient| ingredient.ends_with("-meat")));
+    assert!(data
+        .recipes
+        .iter()
+        .any(|recipe| recipe.customer_type.as_deref() == Some("dragon")));
+    assert!(data.balance.visits_until_ready_by_tier.len() >= 5);
+    assert!(
+        std::path::Path::new("assets/images/characters/dragon.png").is_file(),
+        "fifth-tier clientele needs a portrait asset"
+    );
 }
 
 #[test]

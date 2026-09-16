@@ -111,6 +111,7 @@
   "ui_ready_to_cook": "Ready to cook",
   "ui_cooking": "Cooking",
   "ui_guest_type_unknown": "Guest",
+  "ui_info": "?",
   "ui_plump_ready": "PLUMP & READY",
   "ui_plump_ready_sentence": "Plump and ready for the Lounge",
   "ui_fattening": "Fattening: {fed}/{needed} visits ({remaining} more to Lounge)",

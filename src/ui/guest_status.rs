@@ -190,9 +190,10 @@ pub(super) fn draw_guest_hover_panel(
     data: &GameData,
     progression: &ProgressionState,
     now_ms: f64,
+    pinned: bool,
 ) {
     let mouse = vec2(mouse_position().0, mouse_position().1);
-    if !hover_rect.contains(mouse) {
+    if !pinned && !hover_rect.contains(mouse) {
         return;
     }
 

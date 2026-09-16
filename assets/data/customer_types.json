@@ -217,5 +217,27 @@
     "special_traits": {
       "throws_food": true
     }
+  },
+  {
+    "id": "dragon",
+    "name": "Dragon Girl",
+    "preferred_dishes": [
+      "red",
+      "yellow"
+    ],
+    "base_deliciousness": 6,
+    "description": "A discerning ember aristocrat who expects every course to arrive perfectly fresh",
+    "profile_tier": 5,
+    "unlock_cost": {
+      "bear-meat": 10,
+      "monkey-meat": 8,
+      "fox-meat": 6
+    },
+    "special_traits": {
+      "influencer": true,
+      "high_yield": true,
+      "gourmand": true,
+      "big_tipper": true
+    }
   }
 ]

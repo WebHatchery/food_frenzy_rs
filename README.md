@@ -16,8 +16,8 @@ renowned establishment — one satisfied guest at a time.
 
 - **A full day of service** — a real-time day cycle with a closing ledger
   every night: takings, guests served, best streaks, and tomorrow's goal.
-- **Guests with personality** — a persistent, named clientele across 13 types
-  and 4 tiers; regulars come back, chat at their tables, and are always
+- **Guests with personality** — a persistent, named clientele across 14 types
+  and 5 tiers; regulars come back, chat at their tables, and are always
   welcomed warmly. Every guest type has its own quirk to play around: foxes
   eye the pass, monkeys get cranky, big tippers reward good service.
 - **A kitchen with a clock** — four stations, dish freshness on the pass,
@@ -31,11 +31,17 @@ renowned establishment — one satisfied guest at a time.
 - **Dining events** — dinner rushes, incognito critics, generous evenings,
   and the occasional health inspector keep every day a little different.
 - **A guided first shift** — an eight-step tutorial teaches the loop, and
-  every meter in the house explains itself on hover.
+  every meter in the house explains itself on hover or with a pinned guest
+  detail tap.
 
 ## Controls
 
-- Left Click: interact with restaurant UI.
+The game is touch-first: tap the visible Cook, Serve, VIP, Clear Carried Dish,
+and Prestige buttons. Tap the `?` badge beside a guest to pin their
+satisfaction, patience, meal rhythm, and Lounge progress; tap it again to
+dismiss the details.
+
+- Left Click / tap: interact with restaurant UI.
 - WASD / arrows: walk the chef around the floor.
 - Space / E: interact with the nearest station or guest.
 - 1–4: start each kitchen station.

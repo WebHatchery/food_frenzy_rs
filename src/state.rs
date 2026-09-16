@@ -442,6 +442,10 @@ pub struct GameState {
     /// Presentation-only: whether the clientele goal board overlay is open.
     #[serde(skip)]
     pub show_clientele_board: bool,
+    /// Presentation-only guest detail selection, so touch players can pin
+    /// the same information that desktop players get by hovering.
+    #[serde(skip)]
+    pub selected_guest_id: Option<u32>,
     /// Armed when a guest arrives with an unserved order; consumed by the
     /// full-house bonus when every seated order completes at once.
     #[serde(default)]
@@ -545,6 +549,7 @@ impl GameState {
             floaters: Floaters::default(),
             processing_cinematic: None,
             show_clientele_board: false,
+            selected_guest_id: None,
             full_room_bonus_armed: false,
             day_cycle: DayCycle::default(),
             active_event: None,

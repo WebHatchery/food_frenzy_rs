@@ -38,5 +38,25 @@
     "weight": 3,
     "min_day": 1,
     "effect": { "kind": "tip_multiplier", "multiplier": 2.0 }
+  },
+  {
+    "id": "late-supper",
+    "name": "Late Supper",
+    "announcement": "The late crowd arrives in a rush - keep the pass moving!",
+    "description": "Guests arrive quickly while the late supper lasts.",
+    "duration_ms": 35000,
+    "weight": 2,
+    "min_day": 3,
+    "effect": { "kind": "spawn_rush", "multiplier": 0.65 }
+  },
+  {
+    "id": "chefs-table",
+    "name": "Chef's Table",
+    "announcement": "A chef's table watches every plate. Make the service sing.",
+    "description": "Serving courses earns a renown bonus while the table watches.",
+    "duration_ms": 40000,
+    "weight": 1,
+    "min_day": 3,
+    "effect": { "kind": "serve_renown_multiplier", "multiplier": 1.5 }
   }
 ]

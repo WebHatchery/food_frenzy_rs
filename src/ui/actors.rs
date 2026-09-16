@@ -309,7 +309,18 @@ pub(super) fn draw_customer_sprite(
     if customer.is_seated {
         draw_order_courses(customer, data, pos);
     }
-    draw_guest_hover_panel(pos, sprite_rect, customer, data, progression, now_ms);
+    let info_rect = Rect::new(pos.x + label_w * 0.5 - 26.0, pos.y - 111.0, 22.0, 22.0);
+    draw_button(info_rect, data.text("ui_info"), true, false);
+    ui.guest_info.insert(customer.id, info_rect);
+    draw_guest_hover_panel(
+        pos,
+        sprite_rect,
+        customer,
+        data,
+        progression,
+        now_ms,
+        game.selected_guest_id == Some(customer.id),
+    );
 
     if can_serve {
         draw_rectangle_lines(

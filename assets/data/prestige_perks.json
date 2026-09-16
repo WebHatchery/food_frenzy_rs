@@ -22,5 +22,17 @@
     "name": "Stocked Cellar",
     "description": "A discreet cold room: start the next run with 4 pig-meat already in the larder.",
     "effect": { "kind": "starting_meat", "meat": "pig-meat", "amount": 4 }
+  },
+  {
+    "id": "dragon-cellar",
+    "name": "Dragon's Cellar",
+    "description": "Reserve an ember-bright ingredient: start the next run with 3 dragon-meat.",
+    "effect": { "kind": "starting_meat", "meat": "dragon-meat", "amount": 3 }
+  },
+  {
+    "id": "opening-night",
+    "name": "Opening Night",
+    "description": "A remembered applause: start every new run with an extra $500.",
+    "effect": { "kind": "starting_cash", "amount": 500 }
   }
 ]

@@ -37,7 +37,8 @@
     2,
     3,
     4,
-    5
+    5,
+    6
   ],
   "dish_fresh_window_ms": 12000,
   "dish_spoil_ms": 32000,
@@ -79,7 +80,7 @@
   "influencer_score_multiplier": 1.5,
   "combo_score_step": 0.1,
   "prestige_point_multiplier": 0.03,
-  "max_deliciousness": 5.0,
+  "max_deliciousness": 6.0,
   "high_yield_satisfaction_multiplier": 1.5,
   "gourmand_bill_multiplier": 1.5,
   "fast_spoilage_decay": 2.0,

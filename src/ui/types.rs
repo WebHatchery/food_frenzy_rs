@@ -19,6 +19,7 @@ pub struct UiActions {
     pub tutorial_skip: Option<Rect>,
     pub specialization_buttons: HashMap<String, Rect>,
     pub clientele_board_toggle: Option<Rect>,
+    pub guest_info: HashMap<u32, Rect>,
     pub prestige_perk_buttons: HashMap<String, Rect>,
     pub day_next_button: Option<Rect>,
     /// True while a full-screen overlay (specialization choice, clientele

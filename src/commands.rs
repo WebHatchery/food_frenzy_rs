@@ -29,6 +29,7 @@ pub enum UiCommand {
     TutorialNext,
     TutorialSkip,
     ChooseSpecialization(String),
+    ToggleGuestInfo(u32),
     ToggleClienteleBoard,
     ChoosePrestigePerk(String),
     StartNextDay,
@@ -68,6 +69,9 @@ pub fn read_input_action(ui_hits: UiActions) -> Option<UiCommand> {
     }
     if ui_hits.clear_selection.is_some_and(was_clicked_rect) {
         return Some(UiCommand::ClearSelection);
+    }
+    if let Some(id) = find_map_hit(ui_hits.guest_info) {
+        return Some(UiCommand::ToggleGuestInfo(id));
     }
 
     find_vec_hit(ui_hits.station_select)
@@ -166,6 +170,10 @@ pub fn apply_ui_command(
         UiCommand::ClearSelection => {
             *selected_station = None;
             clear_player_carry(data, game_state);
+        }
+        UiCommand::ToggleGuestInfo(customer_id) => {
+            game_state.selected_guest_id =
+                (game_state.selected_guest_id != Some(customer_id)).then_some(customer_id);
         }
         UiCommand::TutorialNext => {
             game_state.tutorial.advance(&data.tutorial_steps);

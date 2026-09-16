@@ -211,5 +211,22 @@
       "deer": 3,
       "goat": 2
     }
+  },
+  {
+    "id": "ember-crown-tart",
+    "name": "Ember Crown Tart",
+    "description": "A jewel-bright final course for the house's most exacting guest.",
+    "ingredients": {
+      "dragon-meat": 6
+    },
+    "customer_type": "dragon",
+    "unlocked": false,
+    "unlock_condition": "Process 2 Dragon Girls",
+    "profit_multiplier": 2.8,
+    "base_value": 185,
+    "capacity_bonus": 5,
+    "unlock_requirements": {
+      "dragon": 2
+    }
   }
 ]

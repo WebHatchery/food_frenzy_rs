@@ -10,12 +10,12 @@
     "height": 1080
   },
   "about": [
-    "Survive the endless dinner rush. Cook signature recipes, satisfy hungry guests, and chase ever-higher scores and tasty rewards."
+    "Run a touch-first café: tap Cook, Serve, VIP, Clear Carried Dish, and Prestige, then pin a guest's meters with the ? badge."
   ],
   "controls": [
     {
       "key": "Left Click",
-      "desc": "Interact with restaurant UI"
+      "desc": "Tap or click the visible Cook, Serve, VIP, Clear Carried Dish, and Prestige controls"
     },
     {
       "key": "1",
@@ -40,6 +40,10 @@
     {
       "key": "P",
       "desc": "Prestige (if score threshold is met)"
+    },
+    {
+      "key": "Guest ?",
+      "desc": "Tap the guest badge to pin satisfaction, patience, meal rhythm, and Lounge details"
     }
   ],
   "details": [
