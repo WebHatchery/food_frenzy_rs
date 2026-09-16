@@ -295,7 +295,6 @@ impl GuestState {
         customer_type: &str,
         personality: Option<String>,
     ) -> GuestRecord {
-        let now = macroquad::time::get_time() as u64;
         let guest = GuestRecord {
             id: Self::random_id(),
             name: name.to_string(),
@@ -304,7 +303,7 @@ impl GuestState {
             feedings: 0,
             satisfied_visits: 0,
             processed_count: 0,
-            last_seen_at: now,
+            last_seen_at: 0,
             personality,
         };
 
@@ -321,10 +320,18 @@ impl GuestState {
         unlocked_customer_types: &[String],
         excluded_ids: &[String],
     ) -> Option<GuestRecord> {
+        let candidates = self.returning_guest_candidates(unlocked_customer_types, excluded_ids);
+        macroquad_toolkit::rng::choose(&candidates).map(|guest| (*guest).clone())
+    }
+
+    pub fn returning_guest_candidates<'a>(
+        &'a self,
+        unlocked_customer_types: &[String],
+        excluded_ids: &[String],
+    ) -> Vec<&'a GuestRecord> {
         let excluded: HashSet<_> = excluded_ids.iter().collect();
         let unlocked: HashSet<_> = unlocked_customer_types.iter().collect();
-        let candidates: Vec<&GuestRecord> = self
-            .guests
+        self.guests
             .iter()
             .filter(|guest| {
                 guest.feedings > 0
@@ -332,9 +339,7 @@ impl GuestState {
                     && !excluded.contains(&guest.id)
                     && unlocked.contains(&guest.customer_type)
             })
-            .collect();
-
-        macroquad_toolkit::rng::choose(&candidates).map(|guest| (**guest).clone())
+            .collect()
     }
 
     pub fn record_guest_visit(&mut self, guest_id: &str) {
@@ -364,7 +369,10 @@ impl GuestState {
     fn record_guest_touch(&mut self, guest_id: &str, update: impl FnOnce(&mut GuestRecord)) {
         if let Some(guest) = self.guests.iter_mut().find(|guest| guest.id == guest_id) {
             update(guest);
-            guest.last_seen_at = macroquad::time::get_time() as u64;
+            // This field is an ordering marker, not a wall-clock save value.
+            // A logical touch counter keeps replays and headless tests
+            // deterministic while still making each visit observable.
+            guest.last_seen_at = guest.last_seen_at.saturating_add(1);
         }
     }
 }

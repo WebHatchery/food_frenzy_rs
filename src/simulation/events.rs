@@ -5,7 +5,40 @@
 use crate::data::GameData;
 use crate::state::{ActiveEvent, FloaterAnchor, FloaterKind, GameState, ProgressionState};
 
-pub(super) fn update_events(
+/// Return the events that can appear on a given service day in catalog order.
+/// Keeping eligibility pure makes the content gate easy to test without a
+/// Macroquad clock or global random source.
+pub fn eligible_event_ids(data: &GameData, day: u32) -> Vec<String> {
+    data.dining_events
+        .iter()
+        .filter(|event| event.min_day <= day)
+        .map(|event| event.id.clone())
+        .collect()
+}
+
+/// Resolve a weighted event roll without touching global randomness.
+pub fn select_event_id(data: &GameData, day: u32, roll: u32) -> Option<String> {
+    let candidates: Vec<_> = data
+        .dining_events
+        .iter()
+        .filter(|event| event.min_day <= day)
+        .collect();
+    let total_weight: u32 = candidates.iter().map(|event| event.weight).sum();
+    if total_weight == 0 || roll >= total_weight {
+        return None;
+    }
+    let mut remaining = roll;
+    candidates.into_iter().find_map(|event| {
+        if remaining < event.weight {
+            Some(event.id.clone())
+        } else {
+            remaining -= event.weight;
+            None
+        }
+    })
+}
+
+pub fn update_events(
     dt_ms: f32,
     data: &GameData,
     game_state: &mut GameState,
@@ -37,33 +70,33 @@ pub(super) fn update_events(
     }
 
     let current_day = game_state.day_cycle.day;
-    let candidates: Vec<_> = data
+    let total_weight: u32 = data
         .dining_events
         .iter()
         .filter(|event| event.min_day <= current_day)
-        .collect();
-    let total_weight: u32 = candidates.iter().map(|event| event.weight).sum();
+        .map(|event| event.weight)
+        .sum();
     game_state.day_cycle.event_fired = true;
     if total_weight == 0 {
         return;
     }
 
-    let mut roll = macroquad_toolkit::rng::gen_range(0i32, total_weight as i32);
-    for event in candidates {
-        roll -= event.weight as i32;
-        if roll < 0 {
-            game_state.active_event = Some(ActiveEvent {
-                event_id: event.id.clone(),
-                remaining_ms: event.duration_ms.max(1_000.0),
-            });
-            game_state.add_message(event.announcement.clone());
-            game_state.queue_sfx(crate::state::SfxCue::Event);
-            game_state.floaters.spawn(
-                event.name.clone(),
-                FloaterKind::Alert,
-                FloaterAnchor::Header,
-            );
-            return;
-        }
-    }
+    let roll = macroquad_toolkit::rng::gen_range(0i32, total_weight as i32) as u32;
+    let Some(event_id) = select_event_id(data, current_day, roll) else {
+        return;
+    };
+    let Some(event) = data.dining_event_by_id(&event_id) else {
+        return;
+    };
+    game_state.active_event = Some(ActiveEvent {
+        event_id: event.id.clone(),
+        remaining_ms: event.duration_ms.max(1_000.0),
+    });
+    game_state.add_message(event.announcement.clone());
+    game_state.queue_sfx(crate::state::SfxCue::Event);
+    game_state.floaters.spawn(
+        event.name.clone(),
+        FloaterKind::Alert,
+        FloaterAnchor::Header,
+    );
 }

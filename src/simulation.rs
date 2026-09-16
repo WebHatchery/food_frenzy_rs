@@ -6,6 +6,8 @@ pub mod guests;
 mod spawning;
 mod traits;
 
+pub use events::{eligible_event_ids, select_event_id, update_events};
+
 use crate::data::GameData;
 use crate::engine::{max_customer_count, restaurant_table_position};
 use crate::gameplay::dish_display_name;
