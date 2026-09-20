@@ -32,6 +32,10 @@ pub(super) fn draw_kitchen(
     interior_sheet: Option<&Texture2D>,
     ui: &mut UiActions,
 ) {
+    if panel.w >= 500.0 {
+        draw_kitchen_strip(panel, game, data, selected_station, interior_sheet, ui);
+        return;
+    }
     draw_panel(panel);
     draw_centered_section_title(data.text("ui_kitchen"), panel);
 
@@ -104,6 +108,88 @@ pub(super) fn draw_kitchen(
     );
     draw_button(clear_rect, data.text("ui_clear_carried"), false, false);
     ui.clear_selection = Some(clear_rect);
+}
+
+fn draw_kitchen_strip(
+    panel: Rect,
+    game: &GameState,
+    data: &GameData,
+    selected_station: &Option<String>,
+    interior_sheet: Option<&Texture2D>,
+    ui: &mut UiActions,
+) {
+    draw_panel(panel);
+    draw_ui_text(
+        data.text("ui_kitchen"),
+        panel.x + 14.0,
+        panel.y + 26.0,
+        18.0,
+        GOLD,
+    );
+    let clear = Rect::new(panel.x + panel.w - 154.0, panel.y + 9.0, 138.0, 42.0);
+    draw_button(clear, data.text("ui_clear_carried"), false, false);
+    ui.clear_selection = Some(clear);
+
+    if panel.w < 600.0 || panel.h < 100.0 {
+        draw_kitchen_micro(panel, game, data, ui);
+        return;
+    }
+    let gap = 6.0;
+    let row_w = ((panel.w - 28.0 - gap * 3.0) / 4.0).max(72.0);
+    let row_y = panel.y + 36.0;
+    for (index, color) in STATION_COLORS.iter().enumerate() {
+        if let Some(station) = game.cooking_stations.get(*color) {
+            let row = Rect::new(
+                panel.x + 14.0 + index as f32 * (row_w + gap),
+                row_y,
+                row_w,
+                38.0,
+            );
+            draw_recipe_station(
+                row,
+                color,
+                station,
+                selected_station.as_deref() == Some(*color),
+                data,
+                interior_sheet,
+                ui,
+            );
+        }
+    }
+}
+
+fn draw_kitchen_micro(panel: Rect, game: &GameState, data: &GameData, ui: &mut UiActions) {
+    let gap = 5.0;
+    let cell_w = ((panel.w - 28.0 - gap * 3.0) / 4.0).max(64.0);
+    let y = panel.y + 43.0;
+    for (index, color) in STATION_COLORS.iter().enumerate() {
+        let Some(station) = game.cooking_stations.get(*color) else {
+            continue;
+        };
+        let cell_x = panel.x + 14.0 + index as f32 * (cell_w + gap);
+        draw_circle(
+            cell_x + cell_w * 0.5,
+            y - 13.0,
+            7.0,
+            station_draw_color(color),
+        );
+        let ready = !station.dishes.is_empty();
+        let can_cook = station.can_cook(data.balance.cooking_slots_limit);
+        let button = Rect::new(cell_x, y, cell_w, 32.0);
+        let (label, disabled) = if ready {
+            (data.text("ui_carry"), false)
+        } else if can_cook {
+            (data.text("ui_cook"), false)
+        } else {
+            (data.text("ui_busy"), true)
+        };
+        draw_button(button, label, ready, disabled);
+        if ready {
+            ui.station_select.push(((*color).to_string(), button));
+        } else if can_cook {
+            ui.station_cook.push(((*color).to_string(), button));
+        }
+    }
 }
 
 fn draw_kitchen_hero(rect: Rect, game: &GameState, data: &GameData, sheet: Option<&Texture2D>) {

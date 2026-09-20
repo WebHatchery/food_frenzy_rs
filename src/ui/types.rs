@@ -18,13 +18,47 @@ pub struct UiActions {
     pub tutorial_next: Option<Rect>,
     pub tutorial_skip: Option<Rect>,
     pub specialization_buttons: HashMap<String, Rect>,
-    pub clientele_board_toggle: Option<Rect>,
     pub guest_info: HashMap<u32, Rect>,
     pub prestige_perk_buttons: HashMap<String, Rect>,
     pub day_next_button: Option<Rect>,
+    pub management_button: Option<Rect>,
+    pub menu_button: Option<Rect>,
+    pub history_button: Option<Rect>,
+    pub management_close: Option<Rect>,
+    pub management_tabs: Vec<(u8, Rect)>,
+    pub management_previous: Option<Rect>,
+    pub management_next: Option<Rect>,
+    pub recipe_detail_close: Option<Rect>,
+    pub recipe_detail_craft: Option<Rect>,
+    pub pause_resume: Option<Rect>,
+    pub pause_help: Option<Rect>,
+    pub pause_settings: Option<Rect>,
+    pub pause_title: Option<Rect>,
+    pub help_close: Option<Rect>,
+    pub history_close: Option<Rect>,
+    pub prestige_previous: Option<Rect>,
+    pub prestige_next: Option<Rect>,
+    pub prestige_cancel: Option<Rect>,
+    pub prestige_confirm: Option<Rect>,
+    pub specialization_previous: Option<Rect>,
+    pub specialization_next: Option<Rect>,
     /// True while a full-screen overlay (specialization choice, clientele
     /// board) is up: only that overlay's own hitboxes accept clicks.
     pub modal_open: bool,
+    pub overlay: OverlayKind,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum OverlayKind {
+    #[default]
+    None,
+    Management,
+    Pause,
+    Help,
+    History,
+    Specialization,
+    Prestige,
+    DaySummary,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

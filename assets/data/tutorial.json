@@ -14,25 +14,25 @@
   {
     "id": "carry",
     "title": "Carry the dish",
-    "body": "When the dish is plated, tap it to pick it up and carry it to the floor.",
+    "body": "When the dish is plated, tap the visible Carry button to pick it up and carry it to the floor.",
     "trigger": "dish_carried"
   },
   {
     "id": "serve",
     "title": "Serve the course",
-    "body": "Tap Serve on the guest who ordered it. Preferred dishes (their colored dots) pay double.",
+    "body": "Tap the visible Serve action on the guest who ordered it. Preferred dishes (their colored dots) pay double.",
     "trigger": "course_served"
   },
   {
     "id": "fatten",
     "title": "Fatten them up",
-    "body": "A fully served guest pays up, leaves happy... and comes back hungrier. The pink pips under a guest show how plump they are getting.",
+    "body": "A fully served guest pays up, leaves happy... and comes back hungrier. Tap the guest's ? detail badge to read their Lounge progress.",
     "trigger": "guest_departed_fed"
   },
   {
     "id": "ready",
     "title": "Plump and ready",
-    "body": "When the pips fill, a guest is ready for the Last Meal Lounge. Watch for the glow when they next visit.",
+    "body": "When a guest is plump enough, their ? detail and VIP action explain that the Last Meal Lounge is ready.",
     "trigger": "guest_ready"
   },
   {

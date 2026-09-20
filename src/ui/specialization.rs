@@ -3,7 +3,7 @@
 //! commits; prestige resets the choice.
 
 use super::common::{GOLD, LINE, MUTED, SUCCESS, TEXT};
-use super::types::UiActions;
+use super::types::{OverlayKind, UiActions};
 use crate::data::{GameData, SpecializationDef};
 use crate::state::{GameState, ProgressionState};
 use macroquad::prelude::*;
@@ -43,13 +43,26 @@ pub(super) fn draw_specialization_modal(
         Color::new(0.01, 0.008, 0.012, 0.72),
     );
     ui.modal_open = true;
+    ui.overlay = OverlayKind::Specialization;
 
-    let count = data.specializations.len().min(3);
-    let columns = count.min(if width < 900.0 { 2 } else { 3 }).max(1);
-    let card_w = ((width - 32.0 - CARD_GAP * (columns as f32 - 1.0)) / columns as f32)
-        .min(CARD_W)
-        .max(180.0);
-    let card_h = (height - 96.0).clamp(190.0, CARD_H);
+    let narrow = width < 900.0;
+    let page_size = if narrow { 1 } else { 3 };
+    let page_count = data.specializations.len().div_ceil(page_size).max(1);
+    let page = game.specialization_page.min(page_count.saturating_sub(1));
+    let visible = data
+        .specializations
+        .iter()
+        .skip(page * page_size)
+        .take(page_size);
+    let count = visible.len();
+    let columns = count.max(1);
+    let card_w =
+        ((width - 32.0 - CARD_GAP * (columns as f32 - 1.0)) / columns as f32).clamp(180.0, CARD_W);
+    let card_h = if narrow {
+        (height - 150.0).clamp(190.0, CARD_H)
+    } else {
+        (height - 96.0).clamp(190.0, CARD_H)
+    };
     let total_w = card_w * columns as f32 + CARD_GAP * (columns as f32 - 1.0);
     let start_x = width * 0.5 - total_w * 0.5;
     let rows = count.div_ceil(columns);
@@ -75,7 +88,7 @@ pub(super) fn draw_specialization_modal(
         MUTED,
     );
 
-    for (index, spec) in data.specializations.iter().take(count).enumerate() {
+    for (index, spec) in visible.enumerate() {
         let column = index % columns;
         let row = index / columns;
         let card = Rect::new(
@@ -85,6 +98,26 @@ pub(super) fn draw_specialization_modal(
             card_h,
         );
         draw_specialization_card(card, spec, data, ui);
+    }
+    if narrow && page_count > 1 {
+        let previous = Rect::new(width * 0.5 - 156.0, height - 52.0, 120.0, 42.0);
+        let next = Rect::new(width * 0.5 + 36.0, height - 52.0, 120.0, 42.0);
+        super::common::draw_button(previous, data.text("ui_previous"), page > 0, page == 0);
+        super::common::draw_button(
+            next,
+            data.text("ui_next"),
+            page + 1 < page_count,
+            page + 1 >= page_count,
+        );
+        ui.specialization_previous = Some(previous);
+        ui.specialization_next = Some(next);
+        draw_ui_text(
+            &format!("{} / {}", page + 1, page_count),
+            width * 0.5 - 18.0,
+            height - 22.0,
+            14.0,
+            MUTED,
+        );
     }
 }
 
@@ -126,11 +159,7 @@ fn draw_specialization_card(
     y += 10.0;
     for (key, value) in sorted_effects(spec) {
         let good = effect_reads_as_buff(&key, value);
-        let text = format!(
-            "{} {}",
-            if good { "+" } else { "-" },
-            describe_effect(data, &key, value)
-        );
+        let text = describe_effect(data, &key, value);
         draw_ui_text(
             &text,
             card.x + 16.0,
@@ -152,7 +181,7 @@ fn draw_specialization_card(
     }
 
     draw_ui_text(
-        data.text("ui_click_commit"),
+        data.text("ui_choose"),
         card.x + 16.0,
         card.y + card.h - 12.0,
         12.0,
@@ -187,12 +216,7 @@ fn effect_reads_as_buff(key: &str, value: f64) -> bool {
 
 fn describe_effect(data: &GameData, key: &str, value: f64) -> String {
     let percent = (value.abs() * 100.0).round() as i64;
-    let text_key = format!("effect_{key}");
-    let template = if data.text(&text_key).is_empty() {
-        "effect_unknown"
-    } else {
-        &text_key
-    };
+    let template = effect_text_key(key, value);
     data.text_format(
         template,
         [
@@ -202,4 +226,53 @@ fn describe_effect(data: &GameData, key: &str, value: f64) -> String {
         ]
         .as_slice(),
     )
+}
+
+fn effect_text_key(key: &str, value: f64) -> &'static str {
+    match (key, value.is_sign_positive()) {
+        ("cook_time_multiplier", true) => "effect_cook_time_longer",
+        ("cook_time_multiplier", false) => "effect_cook_time_shorter",
+        ("spawn_interval_multiplier", true) => "effect_spawn_interval_slower",
+        ("spawn_interval_multiplier", false) => "effect_spawn_interval_faster",
+        ("satisfaction_decay_multiplier", true) => "effect_decay_faster",
+        ("satisfaction_decay_multiplier", false) => "effect_decay_slower",
+        ("patience_multiplier", true) => "effect_patience_longer",
+        ("patience_multiplier", false) => "effect_patience_shorter",
+        ("meat_yield_multiplier", true) => "effect_meat_yield_more",
+        ("meat_yield_multiplier", false) => "effect_meat_yield_less",
+        ("combo_multiplier", true) => "effect_combo_more",
+        ("combo_multiplier", false) => "effect_combo_less",
+        ("recipe_value_multiplier", true) => "effect_recipe_value_more",
+        ("recipe_value_multiplier", false) => "effect_recipe_value_less",
+        ("capacity_gain_multiplier", true) => "effect_capacity_more",
+        ("capacity_gain_multiplier", false) => "effect_capacity_less",
+        ("max_customers_bonus", true) => "effect_tables_more",
+        ("max_customers_bonus", false) => "effect_tables_less",
+        _ => "effect_unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::effect_text_key;
+
+    #[test]
+    fn effect_direction_uses_mechanical_meaning() {
+        assert_eq!(
+            effect_text_key("cook_time_multiplier", 0.10),
+            "effect_cook_time_longer"
+        );
+        assert_eq!(
+            effect_text_key("cook_time_multiplier", -0.12),
+            "effect_cook_time_shorter"
+        );
+        assert_eq!(
+            effect_text_key("satisfaction_decay_multiplier", 0.10),
+            "effect_decay_faster"
+        );
+        assert_eq!(
+            effect_text_key("satisfaction_decay_multiplier", -0.10),
+            "effect_decay_slower"
+        );
+    }
 }

@@ -3,16 +3,15 @@
 mod room;
 
 use super::actors::{draw_customer_sprite, draw_player_actor};
-use super::common::{
-    dish_label, draw_button, floor_to_screen, station_draw_color, GOLD, LINE, MUTED, TEXT,
-};
+use super::common::{dish_label, floor_to_screen, station_draw_color, GOLD, LINE, MUTED, TEXT};
+use super::guest_status::draw_guest_hover_panel;
 use super::sprites::{self, Region};
 use super::types::UiActions;
 use crate::data::GameData;
 use crate::engine::{max_customer_count, restaurant_entrance_position, restaurant_table_position};
 use crate::state::{Customer, GameState, ProgressionState};
 use macroquad::prelude::*;
-use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
+use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text, wrap_text};
 use std::collections::HashMap;
 
 fn draw_table(
@@ -23,31 +22,39 @@ fn draw_table(
     selected_station: &Option<String>,
     game: &GameState,
     interior_sheet: Option<&Texture2D>,
-    ui: &mut UiActions,
 ) {
-    let table_radius = 48.0;
+    let scale = if screen_height() < 520.0 {
+        (screen_height() / 630.0).clamp(0.62, 0.82)
+    } else {
+        1.0
+    };
+    let table_radius = 48.0 * scale;
     let occupied = customer.is_some();
     let ready_for_lounge =
         customer.is_some_and(|customer| crate::engine::can_process_customer(customer, data));
-    let rect = Rect::new(center.x - 74.0, center.y - 58.0, 148.0, 116.0);
-
     if let Some(sheet) = interior_sheet {
         // Chairs sit behind the table so an occupant reads as seated at it.
         sprites::blit_grounded(
             sheet,
             Region::ChairWood,
-            center.x - 44.0,
-            center.y + 18.0,
-            74.0,
+            center.x - 44.0 * scale,
+            center.y + 18.0 * scale,
+            74.0 * scale,
         );
         sprites::blit_grounded(
             sheet,
             Region::ChairWood,
-            center.x + 44.0,
-            center.y + 18.0,
-            74.0,
+            center.x + 44.0 * scale,
+            center.y + 18.0 * scale,
+            74.0 * scale,
         );
-        sprites::blit_grounded(sheet, Region::RoundTable, center.x, center.y + 34.0, 96.0);
+        sprites::blit_grounded(
+            sheet,
+            Region::RoundTable,
+            center.x,
+            center.y + 34.0 * scale,
+            96.0 * scale,
+        );
         if ready_for_lounge {
             draw_circle_lines(center.x, center.y, table_radius + 4.0, 2.5, SKYBLUE);
         }
@@ -65,15 +72,15 @@ fn draw_table(
             Color::new(0.42, 0.34, 0.25, 1.0)
         };
         draw_circle(
-            center.x - 45.0,
+            center.x - 45.0 * scale,
             center.y,
-            18.0,
+            18.0 * scale,
             Color::new(0.10, 0.075, 0.06, 1.0),
         );
         draw_circle(
-            center.x + 45.0,
+            center.x + 45.0 * scale,
             center.y,
-            18.0,
+            18.0 * scale,
             Color::new(0.10, 0.075, 0.06, 1.0),
         );
         draw_circle(center.x, center.y, table_radius, table_color);
@@ -84,13 +91,18 @@ fn draw_table(
             if ready_for_lounge { 2.5 } else { 1.5 },
             outline,
         );
-        draw_circle(center.x, center.y, 14.0, Color::new(0.50, 0.27, 0.15, 1.0));
+        draw_circle(
+            center.x,
+            center.y,
+            14.0 * scale,
+            Color::new(0.50, 0.27, 0.15, 1.0),
+        );
     }
     draw_ui_text(
         &format!("T{}", table_index + 1),
         center.x - 10.0,
         center.y + 5.0,
-        17.0,
+        (17.0 * scale).max(12.0),
         GOLD,
     );
 
@@ -126,13 +138,11 @@ fn draw_table(
                 && customer.next_course_for(color).is_some()
         });
     if can_serve {
-        let serve_rect = Rect::new(rect.x + rect.w - 62.0, rect.y + 12.0, 50.0, 24.0);
-        draw_button(serve_rect, data.text("ui_serve"), true, false);
         draw_circle_lines(center.x, center.y, table_radius + 5.0, 2.0, SKYBLUE);
-        ui.serve_customer.insert(customer.id, serve_rect);
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_dining_room(
     floor: Rect,
     game: &GameState,
@@ -187,34 +197,29 @@ pub(super) fn draw_dining_room(
             dish_label(data, color)
         }
     });
-    let plaque = Rect::new(
-        floor.x + 18.0,
-        floor.y + floor.h - 48.0,
-        floor.w * 0.48,
-        34.0,
-    );
-    draw_rectangle(
-        plaque.x,
-        plaque.y,
-        plaque.w,
-        plaque.h,
-        Color::new(0.04, 0.035, 0.04, 0.86),
-    );
-    draw_rectangle_lines(plaque.x, plaque.y, plaque.w, plaque.h, 1.0, LINE);
-    draw_ui_text(
-        &data.text_format(
-            "ui_serving",
-            [(
-                "selection",
-                selected_text.unwrap_or_else(|| data.text("message_cook_carry_serve").to_string()),
-            )]
-            .as_slice(),
-        ),
-        plaque.x + 12.0,
-        plaque.y + 23.0,
-        15.0,
-        TEXT,
-    );
+    if let Some(selection) = selected_text {
+        let plaque = Rect::new(
+            floor.x + 18.0,
+            floor.y + floor.h - 48.0,
+            floor.w * 0.48,
+            34.0,
+        );
+        draw_rectangle(
+            plaque.x,
+            plaque.y,
+            plaque.w,
+            plaque.h,
+            Color::new(0.04, 0.035, 0.04, 0.86),
+        );
+        draw_rectangle_lines(plaque.x, plaque.y, plaque.w, plaque.h, 1.0, LINE);
+        draw_ui_text(
+            &data.text_format("ui_serving", [("selection", selection)].as_slice()),
+            plaque.x + 12.0,
+            plaque.y + 23.0,
+            15.0,
+            TEXT,
+        );
+    }
 
     let entrance_world = restaurant_entrance_position();
     let entrance = floor_to_screen(floor, entrance_world.0, entrance_world.1);
@@ -251,7 +256,6 @@ pub(super) fn draw_dining_room(
             selected_station,
             game,
             interior_sheet,
-            ui,
         );
     }
 
@@ -282,6 +286,24 @@ pub(super) fn draw_dining_room(
             game,
             ui,
         );
+    }
+    if let Some(selected_id) = game.selected_guest_id {
+        if let Some(customer) = game
+            .customers
+            .iter()
+            .find(|customer| customer.id == selected_id)
+        {
+            let pos = floor_to_screen(floor, customer.floor_x, customer.floor_y);
+            draw_guest_hover_panel(
+                pos,
+                Rect::new(pos.x - 34.0, pos.y - 82.0, 68.0, 80.0),
+                customer,
+                data,
+                progression,
+                now_ms,
+                true,
+            );
+        }
     }
 
     if game.customers.is_empty() {
@@ -360,8 +382,14 @@ fn draw_event_banner(floor: Rect, game: &GameState, data: &GameData) {
         ]
         .as_slice(),
     );
-    let dim = measure_ui_text(&text, None, 14, 1.0);
-    let rect = Rect::new(floor.x + 12.0, floor.y + 58.0, dim.width + 24.0, 26.0);
+    let rect_w = (floor.w * 0.72).clamp(220.0, 460.0);
+    let lines = wrap_text(&text, rect_w - 24.0, 14.0);
+    let rect = Rect::new(
+        floor.x + 12.0,
+        floor.y + 58.0,
+        rect_w,
+        (lines.len() as f32 * 18.0 + 10.0).max(26.0),
+    );
     draw_rectangle(
         rect.x,
         rect.y,
@@ -377,13 +405,15 @@ fn draw_event_banner(floor: Rect, game: &GameState, data: &GameData) {
         1.5,
         Color::new(0.94, 0.60, 0.36, 1.0),
     );
-    draw_ui_text(
-        &text,
-        rect.x + 12.0,
-        rect.y + 18.0,
-        14.0,
-        Color::new(0.96, 0.82, 0.66, 1.0),
-    );
+    for (index, line) in lines.iter().enumerate() {
+        draw_ui_text(
+            line,
+            rect.x + 12.0,
+            rect.y + 17.0 + index as f32 * 18.0,
+            14.0,
+            Color::new(0.96, 0.82, 0.66, 1.0),
+        );
+    }
 }
 
 /// Visible service-streak meter: the combo multiplier the score math already

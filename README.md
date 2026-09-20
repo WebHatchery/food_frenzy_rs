@@ -48,6 +48,31 @@ dismiss the details.
 - C: clear the carried dish.
 - P: prestige when the renown bar is full.
 
+## Interface support contract
+
+The service floor is composed for landscape play. The supported review targets
+are 1920x1080 normal, 1280x720 desktop, and 844x390 minimum landscape; the
+embedded browser canvas should preserve those ratios while scaling. Portrait
+windows show a readable rotate-to-landscape notice with the Menu recovery path.
+
+The service screen gives the dining floor the dominant attention, keeps the
+kitchen and carried dish immediately available, and moves clientele, upgrades,
+recipes, and prestige into the on-demand Manage destination. Closing ledgers,
+house style, prestige, Lounge rewards, help, and history are modal decisions
+with their own return actions.
+
+## Screen briefs
+
+- **Service:** identify the next Cook, Carry, Serve, or VIP decision from the
+  floor and station strip; current hazards stay near the affected guest or
+  event, while old messages remain available through History.
+- **Management:** compare the complete Clientele, Upgrades, Recipes, and
+  Prestige catalogs before committing; paging and Back to Service remain
+  visible at the decision surface.
+- **Modal decisions:** one overlay owns input at a time. Mandatory choices
+  pause service, explain their consequence, and expose an explicit cancel,
+  close, or next-step action.
+
 ## Goal
 
 Keep guests fed, chain efficient service, climb the clientele ladder, and

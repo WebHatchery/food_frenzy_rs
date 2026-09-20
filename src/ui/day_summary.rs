@@ -3,7 +3,7 @@
 //! purpose. "Open the doors" starts the next day.
 
 use super::common::{GOLD, LINE, MUTED, SUCCESS, TEXT};
-use super::types::UiActions;
+use super::types::{OverlayKind, UiActions};
 use crate::data::GameData;
 use crate::state::GameState;
 use macroquad::prelude::*;
@@ -26,6 +26,7 @@ pub(super) fn draw_day_summary(game: &GameState, data: &GameData, ui: &mut UiAct
         Color::new(0.01, 0.008, 0.012, 0.80),
     );
     ui.modal_open = true;
+    ui.overlay = OverlayKind::DaySummary;
 
     let panel_w = (width - 24.0).clamp(280.0, 540.0);
     let panel_h = (height - 24.0).clamp(220.0, 500.0);

@@ -94,6 +94,33 @@ fn title_button_layout(width: f32, height: f32) -> TitleActions {
     }
 }
 
+fn draw_quiet_menu_button(rect: Rect, text: &str) {
+    let hovered = rect.contains(vec2(mouse_position().0, mouse_position().1));
+    let fill = if hovered {
+        Color::new(0.16, 0.14, 0.13, 0.92)
+    } else {
+        Color::new(0.06, 0.055, 0.052, 0.72)
+    };
+    let border = if hovered {
+        Color::new(0.78, 0.52, 0.30, 1.0)
+    } else {
+        Color::new(0.42, 0.36, 0.32, 0.85)
+    };
+    macroquad_toolkit::ui::draw_surface(
+        rect,
+        &macroquad_toolkit::ui::SurfaceStyle::new(fill).with_border(1.0, border),
+    );
+    draw_text_centered_in_box(
+        text,
+        rect.x + 8.0,
+        rect.y,
+        rect.w - 16.0,
+        rect.h,
+        (rect.h * 0.34).clamp(16.0, 20.0),
+        if hovered { TEXT } else { MUTED },
+    );
+}
+
 pub fn draw_title_screen(
     title_texture: Option<&Texture2D>,
     status_message: &str,
@@ -131,8 +158,8 @@ pub fn draw_title_screen(
 
     draw_menu_button(actions.new_game, data.text("menu_new_game"));
     draw_menu_button(actions.load_game, data.text("menu_load_game"));
-    draw_menu_button(actions.settings, data.text("menu_settings"));
-    draw_menu_button(actions.exit, data.text("menu_exit"));
+    draw_quiet_menu_button(actions.settings, data.text("menu_settings"));
+    draw_quiet_menu_button(actions.exit, data.text("menu_exit"));
 
     actions
 }

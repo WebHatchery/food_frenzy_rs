@@ -7,7 +7,7 @@ use crate::assets::{
 use crate::audio::AudioBank;
 use crate::commands::{
     apply_ui_command, clear_empty_selection, handle_keyboard_shortcuts, read_input_action,
-    read_settings_action, read_title_action, UiCommandContext,
+    read_settings_action, read_title_action, UiCommand, UiCommandContext,
 };
 use crate::data::GameData;
 use crate::lifecycle::{load_saved_game, start_new_game};
@@ -47,6 +47,7 @@ struct App {
     app_screen: AppScreen,
     title_message: String,
     fullscreen_enabled: bool,
+    settings_return_to_playing: bool,
 }
 
 pub async fn run() {
@@ -98,6 +99,7 @@ impl App {
             app_screen: AppScreen::Title,
             title_message: String::new(),
             fullscreen_enabled: false,
+            settings_return_to_playing: false,
         }
     }
 
@@ -109,7 +111,72 @@ impl App {
             "clientele_board" => {
                 self.start_new_game();
                 self.seed_gameplay_demo();
-                self.game_state.show_clientele_board = true;
+                self.game_state.show_management = true;
+                self.game_state.management_tab = 0;
+            }
+            "management" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.show_management = true;
+                self.game_state.management_tab = 2;
+            }
+            "upgrades" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.show_management = true;
+                self.game_state.management_tab = 1;
+            }
+            "recipe_detail" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.show_management = true;
+                self.game_state.management_tab = 2;
+                self.game_state.selected_recipe_id = self
+                    .progression_state
+                    .recipes
+                    .first()
+                    .map(|recipe| recipe.id.clone());
+            }
+            "guest_inspector" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.selected_guest_id = self
+                    .game_state
+                    .customers
+                    .first()
+                    .map(|customer| customer.id);
+            }
+            "pause" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.show_pause_menu = true;
+            }
+            "help" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.show_help = true;
+            }
+            "history" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                self.game_state.show_history = true;
+            }
+            "prestige" => {
+                self.start_new_game();
+                self.seed_gameplay_demo();
+                self.game_state.tutorial.skip();
+                let requirement =
+                    crate::engine::prestige_requirement(&self.data, &self.progression_state);
+                self.game_state.score = requirement;
+                self.progression_state.total_score = requirement;
+                self.game_state.pending_prestige = true;
             }
             "dining_rush" => {
                 // A rush in full swing: extra guests inbound, banner up.
@@ -257,13 +324,23 @@ impl App {
                     self.audio.enabled = !self.audio.enabled;
                 }
                 SettingsAction::Back => {
-                    self.app_screen = AppScreen::Title;
+                    self.app_screen = if self.settings_return_to_playing {
+                        AppScreen::Playing
+                    } else {
+                        AppScreen::Title
+                    };
+                    self.settings_return_to_playing = false;
                 }
             }
         }
 
         if is_key_pressed(KeyCode::Escape) {
-            self.app_screen = AppScreen::Title;
+            self.app_screen = if self.settings_return_to_playing {
+                AppScreen::Playing
+            } else {
+                AppScreen::Title
+            };
+            self.settings_return_to_playing = false;
         }
     }
 
@@ -272,9 +349,19 @@ impl App {
             self.tick_processing_cinematic(dt_ms);
             return;
         }
-        // The end-of-day ledger and the prestige choice both pause the world;
-        // their modals still take clicks below.
-        let paused = self.game_state.day_cycle.summary_pending || self.game_state.pending_prestige;
+        // A management destination, utility surface, mandatory comparison, or
+        // closing decision owns the screen and pauses the service simulation.
+        let specialization_pending = self.progression_state.specialization.is_none()
+            && !self.progression_state.processed_customer_counts.is_empty()
+            && self.game_state.tutorial.complete
+            && self.game_state.processing_cinematic.is_none();
+        let paused = self.game_state.day_cycle.summary_pending
+            || self.game_state.pending_prestige
+            || specialization_pending
+            || self.game_state.show_management
+            || self.game_state.show_pause_menu
+            || self.game_state.show_help
+            || self.game_state.show_history;
         if paused {
             self.game_state.floaters.update(dt_ms);
         } else {
@@ -300,6 +387,25 @@ impl App {
         );
 
         if let Some(command) = read_input_action(ui_hits) {
+            let open_settings = matches!(command, UiCommand::OpenSettings);
+            let return_to_title = matches!(command, UiCommand::ReturnTitle);
+            if return_to_title {
+                if let Err(error) = save_game(
+                    &self.game_state,
+                    &self.progression_state,
+                    &self.guest_state,
+                    &self.timers,
+                    &self.selected_station,
+                ) {
+                    self.game_state.add_message(
+                        self.data
+                            .text_format("message_missing_save", [("error", error)].as_slice()),
+                    );
+                } else {
+                    self.game_state.show_pause_menu = false;
+                    self.app_screen = AppScreen::Title;
+                }
+            }
             apply_ui_command(
                 command,
                 UiCommandContext::new(
@@ -310,6 +416,11 @@ impl App {
                     &mut self.guest_state,
                 ),
             );
+            if open_settings {
+                self.game_state.show_pause_menu = false;
+                self.settings_return_to_playing = true;
+                self.app_screen = AppScreen::Settings;
+            }
         }
 
         if !paused {
@@ -393,6 +504,7 @@ impl App {
             TitleAction::NewGame => self.start_new_game(),
             TitleAction::LoadGame => self.load_saved_game(),
             TitleAction::Settings => {
+                self.settings_return_to_playing = false;
                 self.app_screen = AppScreen::Settings;
             }
             TitleAction::Exit => {

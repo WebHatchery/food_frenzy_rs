@@ -3,7 +3,7 @@
 
 use super::super::common::{draw_bar, ellipsize, station_draw_color, GOLD, LINE, MUTED, TEXT};
 use super::super::sprites::{self, Region};
-use crate::data::GameData;
+use crate::data::{EventEffect, GameData};
 use crate::state::{GameState, ProgressionState};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::draw_ui_text;
@@ -240,7 +240,11 @@ pub(super) fn draw_last_meal_lounge(
         .customers
         .iter()
         .find(|customer| customer.is_seated && crate::engine::can_process_customer(customer, data));
-    let is_active = game.special_table_busy || ready_guest.is_some();
+    let lounge_closed = matches!(
+        game.active_event_effect(data),
+        Some(EventEffect::LoungeClosed)
+    );
+    let is_active = !lounge_closed && (game.special_table_busy || ready_guest.is_some());
     draw_rectangle(
         lounge.x,
         lounge.y,
@@ -291,7 +295,9 @@ pub(super) fn draw_last_meal_lounge(
         17.0,
         TEXT,
     );
-    let status = if game.special_table_busy {
+    let status = if lounge_closed {
+        data.text("ui_lounge_closed").to_string()
+    } else if game.special_table_busy {
         data.text_format(
             "ui_lounge_processing",
             [(

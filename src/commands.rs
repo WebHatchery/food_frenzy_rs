@@ -30,9 +30,30 @@ pub enum UiCommand {
     TutorialSkip,
     ChooseSpecialization(String),
     ToggleGuestInfo(u32),
-    ToggleClienteleBoard,
     ChoosePrestigePerk(String),
     StartNextDay,
+    OpenManagement,
+    CloseManagement,
+    TogglePauseMenu,
+    Resume,
+    OpenHelp,
+    CloseHelp,
+    OpenHistory,
+    CloseHistory,
+    OpenSettings,
+    ReturnTitle,
+    SetManagementTab(u8),
+    ManagementPrevious,
+    ManagementNext,
+    SelectRecipe(String),
+    CloseRecipeDetail,
+    CraftSelectedRecipe,
+    PrestigePrevious,
+    PrestigeNext,
+    CancelPrestige,
+    ConfirmPrestige,
+    SpecializationPrevious,
+    SpecializationNext,
 }
 
 pub struct UiCommandContext<'a> {
@@ -70,22 +91,117 @@ pub fn read_settings_action(ui_hits: &SettingsActions) -> Option<SettingsAction>
 }
 
 pub fn read_input_action(ui_hits: UiActions) -> Option<UiCommand> {
-    // Modal overlays first: they cover the rest of the screen.
-    if ui_hits.day_next_button.is_some_and(was_clicked_rect) {
-        return Some(UiCommand::StartNextDay);
+    // Exactly one visible overlay owns input. This prevents a covered floor
+    // action from firing while a player is reading a comparison or menu.
+    match ui_hits.overlay {
+        crate::ui::OverlayKind::Management => {
+            if ui_hits.management_close.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::CloseManagement);
+            }
+            if let Some((tab, _)) = ui_hits
+                .management_tabs
+                .into_iter()
+                .find(|(_, rect)| was_clicked_rect(*rect))
+            {
+                return Some(UiCommand::SetManagementTab(tab));
+            }
+            if ui_hits.recipe_detail_close.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::CloseRecipeDetail);
+            }
+            if ui_hits.recipe_detail_craft.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::CraftSelectedRecipe);
+            }
+            if ui_hits.management_previous.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::ManagementPrevious);
+            }
+            if ui_hits.management_next.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::ManagementNext);
+            }
+            if let Some(id) = find_map_hit(ui_hits.recipe_buttons) {
+                return Some(UiCommand::SelectRecipe(id));
+            }
+            if let Some(id) = find_map_hit(ui_hits.upgrade_buttons) {
+                return Some(UiCommand::BuyUpgrade(id));
+            }
+            if let Some(id) = find_map_hit(ui_hits.attract_buttons) {
+                return Some(UiCommand::AttractCustomer(id));
+            }
+            if ui_hits.prestige_button.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::Prestige);
+            }
+            return None;
+        }
+        crate::ui::OverlayKind::Pause => {
+            if ui_hits.pause_resume.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::Resume);
+            }
+            if ui_hits.pause_help.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::OpenHelp);
+            }
+            if ui_hits.pause_settings.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::OpenSettings);
+            }
+            if ui_hits.pause_title.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::ReturnTitle);
+            }
+            return None;
+        }
+        crate::ui::OverlayKind::Help => {
+            return ui_hits
+                .help_close
+                .filter(|rect| was_clicked_rect(*rect))
+                .map(|_| UiCommand::CloseHelp);
+        }
+        crate::ui::OverlayKind::History => {
+            return ui_hits
+                .history_close
+                .filter(|rect| was_clicked_rect(*rect))
+                .map(|_| UiCommand::CloseHistory);
+        }
+        crate::ui::OverlayKind::Specialization => {
+            if ui_hits
+                .specialization_previous
+                .is_some_and(was_clicked_rect)
+            {
+                return Some(UiCommand::SpecializationPrevious);
+            }
+            if ui_hits.specialization_next.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::SpecializationNext);
+            }
+            return find_map_hit(ui_hits.specialization_buttons)
+                .map(UiCommand::ChooseSpecialization);
+        }
+        crate::ui::OverlayKind::Prestige => {
+            if ui_hits.prestige_cancel.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::CancelPrestige);
+            }
+            if ui_hits.prestige_previous.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::PrestigePrevious);
+            }
+            if ui_hits.prestige_next.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::PrestigeNext);
+            }
+            if ui_hits.prestige_confirm.is_some_and(was_clicked_rect) {
+                return Some(UiCommand::ConfirmPrestige);
+            }
+            return find_map_hit(ui_hits.prestige_perk_buttons).map(UiCommand::ChoosePrestigePerk);
+        }
+        crate::ui::OverlayKind::DaySummary => {
+            return ui_hits
+                .day_next_button
+                .filter(|rect| was_clicked_rect(*rect))
+                .map(|_| UiCommand::StartNextDay);
+        }
+        crate::ui::OverlayKind::None => {}
     }
-    if let Some(id) = find_map_hit(ui_hits.prestige_perk_buttons) {
-        return Some(UiCommand::ChoosePrestigePerk(id));
+    if ui_hits.management_button.is_some_and(was_clicked_rect) {
+        return Some(UiCommand::OpenManagement);
     }
-    if let Some(id) = find_map_hit(ui_hits.specialization_buttons) {
-        return Some(UiCommand::ChooseSpecialization(id));
+    if ui_hits.menu_button.is_some_and(was_clicked_rect) {
+        return Some(UiCommand::TogglePauseMenu);
     }
-    if ui_hits.clientele_board_toggle.is_some_and(was_clicked_rect) {
-        return Some(UiCommand::ToggleClienteleBoard);
-    }
-    if ui_hits.modal_open {
-        // Overlay owns the screen: only its attract buttons remain live.
-        return find_map_hit(ui_hits.attract_buttons).map(UiCommand::AttractCustomer);
+    if ui_hits.history_button.is_some_and(was_clicked_rect) {
+        return Some(UiCommand::OpenHistory);
     }
     if ui_hits.tutorial_next.is_some_and(was_clicked_rect) {
         return Some(UiCommand::TutorialNext);
@@ -186,19 +302,116 @@ pub fn apply_ui_command(command: UiCommand, mut context: UiCommandContext<'_>) {
         UiCommand::ChooseSpecialization(specialization_id) => {
             choose_specialization(&specialization_id, &mut context);
         }
-        UiCommand::ToggleClienteleBoard => {
-            context.game_state.show_clientele_board = !context.game_state.show_clientele_board;
-        }
         UiCommand::ChoosePrestigePerk(perk_id) => {
-            crate::gameplay::confirm_prestige(
-                &perk_id,
-                context.data,
-                context.game_state,
-                context.progression,
-            );
+            if context.data.prestige_perk_by_id(&perk_id).is_some() {
+                context.game_state.selected_prestige_perk = Some(perk_id);
+            }
         }
         UiCommand::StartNextDay => {
             start_next_day(&mut context);
+        }
+        UiCommand::OpenManagement => {
+            context.game_state.show_management = true;
+            context.game_state.show_pause_menu = false;
+            context.game_state.show_help = false;
+            context.game_state.show_history = false;
+        }
+        UiCommand::CloseManagement => {
+            context.game_state.show_management = false;
+            context.game_state.selected_recipe_id = None;
+        }
+        UiCommand::TogglePauseMenu => {
+            context.game_state.show_pause_menu = true;
+            context.game_state.show_help = false;
+            context.game_state.show_history = false;
+        }
+        UiCommand::Resume => {
+            context.game_state.show_pause_menu = false;
+        }
+        UiCommand::OpenHelp => {
+            context.game_state.show_pause_menu = false;
+            context.game_state.show_help = true;
+        }
+        UiCommand::CloseHelp => {
+            context.game_state.show_help = false;
+        }
+        UiCommand::OpenHistory => {
+            context.game_state.show_history = true;
+        }
+        UiCommand::CloseHistory => {
+            context.game_state.show_history = false;
+        }
+        UiCommand::OpenSettings | UiCommand::ReturnTitle => {
+            context.game_state.show_pause_menu = false;
+        }
+        UiCommand::SetManagementTab(tab) => {
+            context.game_state.management_tab = tab.min(3);
+            context.game_state.management_page = 0;
+            context.game_state.selected_recipe_id = None;
+        }
+        UiCommand::ManagementPrevious => {
+            context.game_state.management_page =
+                context.game_state.management_page.saturating_sub(1);
+        }
+        UiCommand::ManagementNext => {
+            let count = match context.game_state.management_tab {
+                0 => context.data.customer_types.len(),
+                1 => context.progression.upgrades.len(),
+                2 => context.progression.recipes.len(),
+                _ => context.data.prestige_perks.len(),
+            };
+            let page_size = if screen_height() < 520.0 { 3 } else { 6 };
+            let max_page = count.saturating_sub(1) / page_size;
+            context.game_state.management_page =
+                (context.game_state.management_page + 1).min(max_page);
+        }
+        UiCommand::SelectRecipe(recipe_id) => {
+            context.game_state.selected_recipe_id = Some(recipe_id);
+        }
+        UiCommand::CloseRecipeDetail => {
+            context.game_state.selected_recipe_id = None;
+        }
+        UiCommand::CraftSelectedRecipe => {
+            if let Some(recipe_id) = context.game_state.selected_recipe_id.clone() {
+                craft_recipe(
+                    &recipe_id,
+                    context.data,
+                    context.game_state,
+                    context.progression,
+                );
+            }
+        }
+        UiCommand::PrestigePrevious => {
+            context.game_state.prestige_page = context.game_state.prestige_page.saturating_sub(1);
+        }
+        UiCommand::PrestigeNext => {
+            let page_size = if screen_width() < 900.0 { 2 } else { 3 };
+            let max_page = context.data.prestige_perks.len().saturating_sub(1) / page_size;
+            context.game_state.prestige_page = (context.game_state.prestige_page + 1).min(max_page);
+        }
+        UiCommand::CancelPrestige => {
+            context.game_state.pending_prestige = false;
+            context.game_state.selected_prestige_perk = None;
+            context.game_state.prestige_page = 0;
+        }
+        UiCommand::ConfirmPrestige => {
+            if let Some(perk_id) = context.game_state.selected_prestige_perk.clone() {
+                crate::gameplay::confirm_prestige(
+                    &perk_id,
+                    context.data,
+                    context.game_state,
+                    context.progression,
+                );
+            }
+        }
+        UiCommand::SpecializationPrevious => {
+            context.game_state.specialization_page =
+                context.game_state.specialization_page.saturating_sub(1);
+        }
+        UiCommand::SpecializationNext => {
+            let max_page = context.data.specializations.len().saturating_sub(1);
+            context.game_state.specialization_page =
+                (context.game_state.specialization_page + 1).min(max_page);
         }
     }
 }

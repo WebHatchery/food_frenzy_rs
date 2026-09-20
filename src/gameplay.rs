@@ -39,6 +39,8 @@ pub fn try_prestige(
     } else {
         // Opens the perk-choice modal; `confirm_prestige` finishes the job.
         game_state.pending_prestige = true;
+        game_state.prestige_page = 0;
+        game_state.selected_prestige_perk = None;
     }
 }
 
@@ -49,7 +51,6 @@ pub fn confirm_prestige(
     game_state: &mut GameState,
     progression: &mut ProgressionState,
 ) {
-    game_state.pending_prestige = false;
     let requirement = prestige_requirement(data, progression);
     let Some(perk) = data.prestige_perk_by_id(perk_id) else {
         return;
@@ -57,6 +58,9 @@ pub fn confirm_prestige(
     if !progression.can_prestige(requirement) {
         return;
     }
+    game_state.pending_prestige = false;
+    game_state.prestige_page = 0;
+    game_state.selected_prestige_perk = None;
     progression.prestige(data, Some(perk));
     if let PerkEffect::StartingMeat { meat, amount } = &perk.effect {
         let entry = game_state.ingredients.entry(meat.clone()).or_insert(0);

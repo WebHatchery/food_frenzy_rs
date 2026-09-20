@@ -20,6 +20,7 @@ if (-not (Test-Path $rootPublisher)) {
 }
 
 & $rootPublisher -RustGamePublish -ProjectDir $PSScriptRoot `
+    -ProjectSlug feast_frenzy `
     -SkipBuild:$SkipBuild `
     -WindowsOnly:$WindowsOnly `
     -WebGLOnly:$WebGLOnly `

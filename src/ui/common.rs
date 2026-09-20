@@ -149,12 +149,6 @@ pub(super) fn draw_menu_button(rect: Rect, text: &str) {
     );
 }
 
-pub(super) fn draw_card(rect: Rect, title: &str) {
-    let surface = macroquad_toolkit::ui::SurfaceStyle::new(CARD).with_border(1.0, LINE);
-    macroquad_toolkit::ui::draw_surface(rect, &surface);
-    draw_ui_text(title, rect.x + 12.0, rect.y + 25.0, 18.0, GOLD);
-}
-
 pub(super) fn draw_tooltip(text: &str, center_x: f32, y: f32) {
     let text_dim = measure_ui_text(text, None, 14, 1.0);
     let rect = Rect::new(
@@ -217,17 +211,6 @@ pub(super) fn draw_station_dots(x: f32, y: f32, count: usize, filled: usize, col
             },
         );
     }
-}
-
-pub(super) fn sorted_ingredient_lines(game: &GameState) -> Vec<String> {
-    let mut ingredients: Vec<_> = game
-        .ingredients
-        .iter()
-        .filter(|(name, amount)| name.as_str() != "regular" && **amount > 0)
-        .map(|(name, amount)| format!("{name}: {amount}"))
-        .collect();
-    ingredients.sort();
-    ingredients
 }
 
 pub(super) fn format_unlock_cost(data: &GameData, cost: &HashMap<String, i64>) -> String {

@@ -377,6 +377,12 @@ impl GuestState {
     }
 }
 
+impl Default for GuestState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgressionState {
     pub currency: i64,
@@ -447,9 +453,28 @@ pub struct GameState {
     /// save/load loses nothing but the show.
     #[serde(skip)]
     pub processing_cinematic: Option<ProcessingCinematic>,
-    /// Presentation-only: whether the clientele goal board overlay is open.
+    /// Presentation-only management destination. The service floor remains
+    /// intact beneath it so returning never loses the carried dish or guest.
     #[serde(skip)]
-    pub show_clientele_board: bool,
+    pub show_management: bool,
+    #[serde(skip)]
+    pub management_tab: u8,
+    #[serde(skip)]
+    pub management_page: usize,
+    #[serde(skip)]
+    pub selected_recipe_id: Option<String>,
+    #[serde(skip)]
+    pub prestige_page: usize,
+    #[serde(skip)]
+    pub selected_prestige_perk: Option<String>,
+    #[serde(skip)]
+    pub specialization_page: usize,
+    #[serde(skip)]
+    pub show_pause_menu: bool,
+    #[serde(skip)]
+    pub show_help: bool,
+    #[serde(skip)]
+    pub show_history: bool,
     /// Presentation-only guest detail selection, so touch players can pin
     /// the same information that desktop players get by hovering.
     #[serde(skip)]
@@ -528,6 +553,12 @@ impl Timers {
     }
 }
 
+impl Default for Timers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GameState {
     pub fn new(data: &crate::data::GameData) -> Self {
         let mut stations = HashMap::new();
@@ -552,15 +583,23 @@ impl GameState {
             special_table_timer: 0.0,
             messages: vec![data.text("service_started").to_string()],
             next_customer_id: 1,
-            player: {
-                let mut player = PlayerActor::default();
-                player.task_label = data.text("task_prep").to_string();
-                player
+            player: PlayerActor {
+                task_label: data.text("task_prep").to_string(),
+                ..PlayerActor::default()
             },
             tutorial: TutorialProgress::default(),
             floaters: Floaters::default(),
             processing_cinematic: None,
-            show_clientele_board: false,
+            show_management: false,
+            management_tab: 0,
+            management_page: 0,
+            selected_recipe_id: None,
+            prestige_page: 0,
+            selected_prestige_perk: None,
+            specialization_page: 0,
+            show_pause_menu: false,
+            show_help: false,
+            show_history: false,
             selected_guest_id: None,
             full_room_bonus_armed: false,
             day_cycle: DayCycle::default(),

@@ -8,7 +8,7 @@ use super::guest_status::{draw_guest_hover_panel, draw_guest_meters};
 use super::sprites::{self, Region};
 use super::types::UiActions;
 use crate::data::GameData;
-use crate::state::{Course, Customer, GameState, PlayerActor, ProgressionState};
+use crate::state::{Customer, GameState, PlayerActor, ProgressionState};
 use macroquad::prelude::*;
 use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 use std::collections::HashMap;
@@ -21,64 +21,43 @@ fn customer_label(customer: &Customer, data: &GameData) -> String {
     format!("{} / {}", customer.display_name, customer_type)
 }
 
-/// Draw the guest's ordered courses as a row of chips (dish name + colour dot),
-/// dimmed and check-marked once served so the player can read the order at a
-/// glance.
-fn draw_order_courses(customer: &Customer, data: &GameData, pos: Vec2) {
-    if customer.order.is_empty() {
+/// Show only the next actionable course beside the guest. Completed history is
+/// available in the pinned inspector instead of competing with the floor.
+fn draw_order_courses(customer: &Customer, data: &GameData, pos: Vec2, floor: Rect, scale: f32) {
+    let Some(course) = customer.order.iter().find(|course| !course.served) else {
         return;
-    }
+    };
     let font = 12.0;
-    let chip_h = 17.0;
-    let gap = 4.0;
-    let mut widths = Vec::with_capacity(customer.order.len());
-    let mut total_w = 0.0;
-    for course in &customer.order {
-        let text = course_chip_text(course, data);
-        let w = measure_ui_text(&text, None, font as u16, 1.0).width + 22.0;
-        widths.push((text, w));
-        total_w += w;
-    }
-    total_w += gap * (customer.order.len() as f32 - 1.0);
-
-    let mut x = pos.x - total_w * 0.5;
-    let y = pos.y - 66.0;
-    for (course, (text, w)) in customer.order.iter().zip(widths) {
-        draw_rectangle(
-            x,
-            y,
-            w,
-            chip_h,
-            if course.served {
-                Color::new(0.05, 0.10, 0.05, 0.80)
-            } else {
-                Color::new(0.02, 0.02, 0.025, 0.80)
-            },
-        );
-        draw_circle(
-            x + 8.0,
-            y + chip_h * 0.5,
-            4.0,
-            station_draw_color(&course.color),
-        );
-        draw_ui_text(
-            &text,
-            x + 16.0,
-            y + 13.0,
-            font,
-            if course.served { LIME } else { TEXT },
-        );
-        x += w + gap;
-    }
-}
-
-fn course_chip_text(course: &Course, data: &GameData) -> String {
-    let dish = ellipsize(&dish_label(data, &course.color), 14);
-    if course.served {
-        format!("{} {dish}", data.text("ui_served"))
-    } else {
-        format!("{}: {dish}", course.label)
-    }
+    let text = format!("{}: {}", course.label, dish_label(data, &course.color));
+    let label = ellipsize(&text, 24);
+    let width = 188.0;
+    let rect = Rect::new(
+        pos.x - width * scale * 0.5,
+        (pos.y - 148.0 * scale).max(floor.y + 4.0),
+        width * scale,
+        26.0 * scale,
+    );
+    draw_rectangle(
+        rect.x,
+        rect.y,
+        rect.w,
+        rect.h,
+        Color::new(0.02, 0.02, 0.025, 0.90),
+    );
+    draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 1.0, SKYBLUE);
+    draw_circle(
+        rect.x + 11.0 * scale,
+        rect.y + 13.0 * scale,
+        4.0 * scale,
+        station_draw_color(&course.color),
+    );
+    draw_ui_text(
+        &label,
+        rect.x + 20.0 * scale,
+        rect.y + 18.0 * scale,
+        (font * scale).max(10.0),
+        TEXT,
+    );
 }
 
 pub(super) fn draw_player_actor(
@@ -214,6 +193,7 @@ pub(super) fn draw_player_actor_scaled(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_customer_sprite(
     floor: Rect,
     customer: &Customer,
@@ -226,7 +206,18 @@ pub(super) fn draw_customer_sprite(
     ui: &mut UiActions,
 ) {
     let pos = floor_to_screen(floor, customer.floor_x, customer.floor_y);
-    let sprite_rect = Rect::new(pos.x - 34.0, pos.y - 82.0, 68.0, 80.0);
+    let compact = floor.h < 260.0;
+    let scale = if compact {
+        (floor.h / 280.0).clamp(0.62, 0.82)
+    } else {
+        1.0
+    };
+    let sprite_rect = Rect::new(
+        pos.x - 34.0 * scale,
+        pos.y - 82.0 * scale,
+        68.0 * scale,
+        80.0 * scale,
+    );
     let can_serve = customer.is_seated
         && selected_station.as_ref().is_some_and(|color| {
             game.cooking_stations
@@ -261,26 +252,32 @@ pub(super) fn draw_customer_sprite(
         );
     }
 
-    let label = customer_label(customer, data);
-    let text_dim = measure_ui_text(&label, None, 16, 1.0);
+    let label = ellipsize(
+        &customer_label(customer, data),
+        if compact { 16 } else { 24 },
+    );
+    let font = if compact { 12.0 } else { 16.0 };
+    let text_dim = measure_ui_text(&label, None, font as u16, 1.0);
     let label_w = text_dim.width + 22.0;
+    let label_y = (pos.y - 116.0 * scale).max(floor.y + 4.0);
+    let label_h = if compact { 30.0 } else { 38.0 };
     draw_rectangle(
         pos.x - label_w * 0.5,
-        pos.y - 116.0,
+        label_y,
         label_w,
-        38.0,
+        label_h,
         Color::new(0.02, 0.02, 0.025, 0.78),
     );
     draw_ui_text(
         &label,
         pos.x - label_w * 0.5 + 11.0,
-        pos.y - 95.0,
-        16.0,
+        label_y + label_h * 0.70,
+        font,
         TEXT,
     );
     if crate::engine::is_regular(customer, data) {
         // Regulars get a little gold badge: the house knows this face.
-        let badge = vec2(pos.x - label_w * 0.5 - 8.0, pos.y - 103.0);
+        let badge = vec2(pos.x - label_w * 0.5 - 8.0, label_y + label_h * 0.5);
         draw_circle(badge.x, badge.y, 7.0, Color::new(0.84, 0.60, 0.31, 1.0));
         draw_ui_text(
             data.text("ui_regular_badge"),
@@ -290,7 +287,7 @@ pub(super) fn draw_customer_sprite(
             Color::new(0.1, 0.06, 0.03, 1.0),
         );
     }
-    draw_guest_meters(pos, customer, data, progression, now_ms);
+    draw_guest_meters(pos, customer, data, progression, now_ms, scale);
     if customer.bill > 0 {
         let tab = format!("${}", customer.bill);
         let tab_dim = measure_ui_text(&tab, None, 14, 1.0);
@@ -304,23 +301,17 @@ pub(super) fn draw_customer_sprite(
         draw_ui_text(&tab, pos.x + 60.0, pos.y - 65.0, 14.0, GOLD);
     }
     if customer.depart_timer_ms > 0.0 {
-        draw_tooltip(data.text("ui_paying"), pos.x, pos.y - 128.0);
+        draw_tooltip(data.text("ui_paying"), pos.x, pos.y - 128.0 * scale);
     }
     if customer.is_seated {
-        draw_order_courses(customer, data, pos);
+        draw_order_courses(customer, data, pos, floor, scale);
     }
-    let info_rect = Rect::new(pos.x + label_w * 0.5 - 26.0, pos.y - 111.0, 22.0, 22.0);
+    let info_rect = Rect::new(pos.x + label_w * 0.5 - 48.0, label_y - 2.0, 44.0, 40.0);
     draw_button(info_rect, data.text("ui_info"), true, false);
     ui.guest_info.insert(customer.id, info_rect);
-    draw_guest_hover_panel(
-        pos,
-        sprite_rect,
-        customer,
-        data,
-        progression,
-        now_ms,
-        game.selected_guest_id == Some(customer.id),
-    );
+    if game.selected_guest_id != Some(customer.id) {
+        draw_guest_hover_panel(pos, sprite_rect, customer, data, progression, now_ms, false);
+    }
 
     if can_serve {
         draw_rectangle_lines(
@@ -334,11 +325,23 @@ pub(super) fn draw_customer_sprite(
         if player_near_customer(game, customer, data.balance.player_interaction_range) {
             draw_tooltip(data.text("ui_click_serve"), pos.x, pos.y - 145.0);
         }
-        ui.serve_customer.entry(customer.id).or_insert(sprite_rect);
+        let serve_rect = Rect::new(
+            (pos.x - 48.0).clamp(floor.x + 6.0, floor.x + floor.w - 102.0),
+            (pos.y + 26.0).min(floor.y + floor.h - 46.0),
+            96.0,
+            40.0,
+        );
+        draw_button(serve_rect, data.text("ui_serve"), true, false);
+        ui.serve_customer.insert(customer.id, serve_rect);
     }
 
     if customer.is_seated && crate::engine::can_process_customer(customer, data) {
-        let invite_rect = Rect::new(pos.x - 36.0, pos.y + 22.0, 72.0, 28.0);
+        let invite_rect = Rect::new(
+            (pos.x - 48.0).clamp(floor.x + 6.0, floor.x + floor.w - 102.0),
+            (pos.y + 72.0).min(floor.y + floor.h - 46.0),
+            96.0,
+            40.0,
+        );
         draw_button(invite_rect, data.text("ui_vip"), true, false);
         ui.invite_customer.insert(customer.id, invite_rect);
     }
